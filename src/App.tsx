@@ -31,8 +31,6 @@ import Notifications from "./pages/Notifications";
 import Search from "./pages/Search";
 import Reports from "./pages/Reports";
 import Roles from "./pages/Roles";
-import Vendors from "./pages/Vendors";
-import Warranty from "./pages/Warranty";
 import ApprovedRequestQueue from "./pages/ApprovedRequestQueue";
 import AllocationOnboarding from "./pages/AllocationOnboarding";
 import OnboardingVerification from "./pages/OnboardingVerification";
@@ -122,8 +120,6 @@ export function App() {
             <Route path="/search" element={<Search />} />
             <Route path="/reports" element={<Reports />} />
             <Route path="/roles" element={<Roles />} />
-            <Route path="/vendors" element={<Vendors />} />
-            <Route path="/warranty" element={<Warranty />} />
             <Route path="/approved-request-queue" element={<ApprovedRequestQueue />} />
             <Route path="/allocation-onboarding" element={<AllocationOnboarding />} />
             <Route path="/onboarding-verification" element={<OnboardingVerification />} />

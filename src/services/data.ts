@@ -39,33 +39,59 @@ function initials(name: string) {
     .toUpperCase();
 }
 
-export function mapEmployee(user: BackendUser): Employee {
+export function mapEmployee(user: any): Employee {
+
   return {
-    id: user.display_id ?? user.id,
-    uuid: user.id,
-    name: user.name,
+    id: user.userId,
+    uuid: user.userId,
+    name: `${user.firstName} ${user.lastName}`,
     email: user.email,
-    role: user.role as Employee["role"],
-    department: user.department ?? "",
-    designation: user.designation ?? "",
-    manager: user.manager ?? "",
-    location: user.location ?? "",
-    status: (user.status as Employee["status"]) ?? "Active",
-    avatar: user.avatar ?? initials(user.name),
-    phone: user.phone ?? "",
-    joinDate: user.join_date ?? "",
-    allocationDate: user.allocation_date ?? undefined,
-    allocationTime: user.allocation_time ?? undefined,
-    allocationStatus: user.allocation_status ?? undefined,
-    requiredAssetCategory: user.required_asset_category ?? undefined,
-    allocatedAssetDetails: user.allocated_asset_details,
-    allocationHistory: user.allocation_history,
+
+    role:
+      user.role === "IT_SUPPORT"
+        ? "support"
+        : user.role === "ASSET_MANAGER"
+        ? "asset_manager"
+        : "employee",
+
+    department: "",
+    designation: "",
+    manager: "",
+    location: "",
+
+    status:
+      user.status === "ACTIVE"
+        ? "Active"
+        : "Inactive",
+
+    avatar:
+      `${user.firstName[0]}${user.lastName[0]}`,
+
+    phone: "",
+
+    joinDate: user.createdAt,
+
+    allocationDate: undefined,
+    allocationTime: undefined,
+    allocationStatus: undefined,
+    requiredAssetCategory: undefined
   };
 }
 
 export async function fetchEmployees() {
-  const data = await apiFetch<PaginatedData<BackendUser>>("/admin/employees?limit=10000");
-  return data.items.map(mapEmployee);
+    console.log("Calling GET /admin/users");
+
+    const data = await apiFetch<any>("/admin/users");
+
+    console.log("API Response:", data);
+
+    console.log("Users Array:", data.users);
+
+    const mapped = data.users.map(mapEmployee);
+
+    console.log("Mapped Employees:", mapped);
+
+    return mapped;
 }
 
 export async function fetchFullProfile() {
@@ -73,15 +99,137 @@ export async function fetchFullProfile() {
 }
 
 export async function createEmployee(payload: any) {
-  const data = await apiFetch<BackendUser>("/admin/employees/register", {
+
+  const data = await apiFetch<any>("/admin/users", {
     method: "POST",
     body: JSON.stringify({
-      ...payload,
-      join_date: payload.joinDate,
-      allocation_date: payload.allocationDate,
-      allocation_time: payload.allocationTime,
-      required_asset_category: payload.requiredAssetCategory,
-    }),
+      firstName: payload.name.split(" ")[0],
+      lastName: payload.name.split(" ").slice(1).join(" "),
+      email: payload.email,
+      password: "Welcome@123",
+      role:
+        payload.role === "support"
+          ? "IT_SUPPORT"
+          : payload.role === "asset_manager"
+          ? "ASSET_MANAGER"
+          : "EMPLOYEE"
+    })
   });
-  return mapEmployee(data);
+
+  return data;
+}
+
+export async function deleteEmployee(id: string) {
+  return apiFetch(`/admin/users/${id}`, {
+    method: "DELETE"
+  });
+}
+
+export async function fetchDashboard() {
+  const data = await apiFetch<any>("/admin/dashboard");
+  return data;
+}
+export async function fetchAssets() {
+
+  const data = await apiFetch<any>("/assets");
+
+  return data.assets;
+
+}
+
+export async function createAsset(payload: any) {
+
+  return apiFetch("/assets", {
+    method: "POST",
+    body: JSON.stringify({
+      assetName: payload.assetName,
+      category: payload.category,
+      brand: payload.brand,
+      model: payload.model,
+      serialNumber: payload.serialNumber,
+      purchaseDate: payload.purchaseDate,
+      purchasePrice: payload.purchasePrice,
+      vendor: payload.vendor
+    })
+  });
+
+}
+
+export async function deleteAsset(id: string) {
+
+  return apiFetch(`/assets/${id}`, {
+    method: "DELETE"
+  });
+}
+
+export async function updateAsset(id: string, payload: any) {
+
+  return apiFetch(`/assets/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(payload)
+  });
+
+}
+// ======================= ASSIGNMENTS =======================
+
+export async function fetchAssignments() {
+
+  const data = await apiFetch<any>("/assignments");
+
+  return data.assignments;
+
+}
+
+export async function createAssignment(payload: any) {
+
+  return apiFetch("/assignments", {
+    method: "POST",
+    body: JSON.stringify({
+      assetId: payload.assetId,
+      employeeId: payload.employeeId
+    })
+  });
+
+}
+
+export async function updateAssignment(id: string) {
+
+  return apiFetch(`/assignments/${id}`, {
+    method: "PUT"
+  });
+
+}
+
+export async function deleteAssignment(id: string) {
+
+  return apiFetch(`/assignments/${id}`, {
+    method: "DELETE"
+  });
+
+}
+// ======================= MAINTENANCE =======================
+
+export async function fetchMaintenance() {
+  const data = await apiFetch<any>("/maintenance");
+  return data.maintenance;
+}
+
+export async function createMaintenance(payload: any) {
+  return apiFetch("/maintenance", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function updateMaintenance(id: string, payload: any) {
+  return apiFetch(`/maintenance/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function deleteMaintenance(id: string) {
+  return apiFetch(`/maintenance/${id}`, {
+    method: "DELETE"
+  });
 }

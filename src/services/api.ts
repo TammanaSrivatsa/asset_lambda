@@ -33,7 +33,7 @@ export async function apiFetch<T>(
     );
   }
 
-  return body?.data as T;
+  return body as T;
 }
 
 export async function apiUpload(
@@ -60,5 +60,5 @@ export async function apiUpload(
     );
   }
 
-  return body?.data;
+  return body;
 }

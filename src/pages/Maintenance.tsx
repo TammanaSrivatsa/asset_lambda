@@ -16,18 +16,54 @@ export default function MaintenancePage() {
 export function MaintenanceTable({ title, description, showAction }: { title: string; description?: string; showAction?: boolean }) {
   const { maintenance, assets } = useData();
   const columns: ColumnDef<Maintenance>[] = [
-    { accessorKey: "id", header: "ID" },
-    { id: "asset", header: "Asset", cell: ({row}) => {
-      const a = assets.find(x=>x.id===row.original.assetId);
-      return <div><div className="font-medium">{a?.name}</div><div className="text-xs text-muted-foreground">{row.original.assetId}</div></div>;
-    }},
-    { accessorKey: "engineer", header: "Engineer" },
-    { accessorKey: "date", header: "Date" },
-    { accessorKey: "resolution", header: "Resolution" },
-    { accessorKey: "parts", header: "Parts" },
-    { accessorKey: "cost", header: "Cost", cell: ({row}) => `$${row.original.cost}` },
-    { id: "status", header: "Status", cell: ({row}) => <StatusBadge status={row.original.status}/> },
-  ];
+  {
+    accessorKey: "maintenanceId",
+    header: "Maintenance ID",
+  },
+  {
+    id: "asset",
+    header: "Asset",
+    cell: ({ row }) => {
+      const asset = assets.find(
+        (a) => a.id === row.original.assetId
+      );
+
+      return (
+        <div>
+          <div className="font-medium">
+            {asset?.name ?? row.original.assetId}
+          </div>
+          <div className="text-xs text-muted-foreground">
+            {row.original.assetId}
+          </div>
+        </div>
+      );
+    },
+  },
+  {
+    accessorKey: "issue",
+    header: "Issue",
+  },
+  {
+    accessorKey: "technician",
+    header: "Technician",
+  },
+  {
+    accessorKey: "reportedBy",
+    header: "Reported By",
+  },
+  {
+    accessorKey: "createdAt",
+    header: "Created",
+  },
+  {
+    id: "status",
+    header: "Status",
+    cell: ({ row }) => (
+      <StatusBadge status={row.original.status} />
+    ),
+  },
+];
   return (
     <>
       <PageHeader

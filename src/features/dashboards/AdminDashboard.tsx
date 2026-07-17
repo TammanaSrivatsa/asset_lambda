@@ -22,7 +22,7 @@ const COLORS = ["oklch(0.55 0.2 255)","oklch(0.65 0.16 150)","oklch(0.72 0.17 55
 
 export function AdminDashboard() {
   const { user } = useAuth();
-  const { employees, assets, tickets, fetchFullProfile } = useData();
+  const { employees, assets, dashboardStats, tickets, fetchFullProfile } = useData();
 
   const [selectedEmp, setSelectedEmp] = useState<any | null>(null);
   const [fullProfile, setFullProfile] = useState<any | null>(null);
@@ -98,10 +98,10 @@ export function AdminDashboard() {
         }
       />
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <StatCard label="Employees" value={employees.length} icon={Users} tone="primary" delta={{value:"+12 this month", up:true}} index={0}/>
-        <StatCard label="Assets" value={assets.length.toLocaleString()} icon={Package} tone="info" delta={{value:"+34 this month", up:true}} index={1}/>
-        <StatCard label="Tickets" value={tickets.length} icon={TicketIcon} tone="warning" index={2}/>
-        <StatCard label="Avg Resolution Time" value="4.2h" icon={Timer} tone="success" delta={{value:"-0.3h", up:true}} index={3}/>
+        <StatCard label="Employees" value={dashboardStats?.employees ?? 0} icon={Users} tone="primary" delta={{value:"+12 this month", up:true}} index={0}/>
+        <StatCard label="Asset Managers" value={dashboardStats?.assetManagers ?? 0} icon={Package} tone="info" delta={{value:"+34 this month", up:true}} index={1}/>
+        <StatCard label="IT Support" value={dashboardStats?.itSupport ?? 0} icon={TicketIcon} tone="warning" index={2}/>
+        <StatCard label="Admins" value={dashboardStats?.admins ?? 0} icon={ShieldCheck} tone="success" delta={{value:"-0.3h", up:true}} index={3}/>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">

@@ -12,6 +12,14 @@ import {
 import {
   createEmployee as apiCreateEmployee,
   fetchEmployees,
+  deleteEmployee as apiDeleteEmployee,
+  fetchDashboard,
+  fetchAssets,
+  createAsset,
+  deleteAsset,
+  fetchAssignments,
+  createAssignment,
+  fetchMaintenance
 } from "@/services/data";
 import { useAuth } from "@/contexts/auth";
 import { toast } from "sonner";
@@ -23,7 +31,6 @@ interface DataCtx {
   tickets: Ticket[];
   auditLogs: any[];
   notifications: any[];
-  vendors: Vendor[];
   maintenance: Maintenance[];
   knowledgeBase: any[];
   dashboardStats: any | null;
@@ -54,15 +61,15 @@ function todayStr() {
 export function DataProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [employees, setEmployees] = useState<Employee[]>([]);
-  const [assets] = useState<Asset[]>([]);
-  const [assignments] = useState<Assignment[]>([]);
+  const [assets, setAssets] = useState<Asset[]>([]);
+  const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [auditLogs] = useState<any[]>([]);
   const [notifications] = useState<any[]>([]);
-  const [vendors] = useState<Vendor[]>([]);
-  const [maintenance] = useState<Maintenance[]>([]);
+  const [vendors, setVendors] = useState<Vendor[]>([]);
+  const [maintenance, setMaintenance] = useState<Maintenance[]>([]);
   const [knowledgeBase] = useState<any[]>([]);
-  const [dashboardStats] = useState<any | null>(null);
+  const [dashboardStats, setDashboardStats] = useState<any | null>(null);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -73,19 +80,66 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setError(null);
 
     try {
-      const role = user?.role;
-      const [apiEmployees, ticketResult] = await Promise.all([
-        fetchEmployees(),
-        apiFetchTickets(role),
-      ]);
-      setEmployees(apiEmployees);
-      setTickets(ticketResult.tickets);
-    } catch (err: any) {
-      const message = err.message || "Failed to load application data";
-      setError(message);
-      toast.error(message);
-      setEmployees([]);
+      const [
+    apiEmployees,
+    apiAssets,
+    apiAssignments,
+    apiMaintenance,
+    dashboard
+] = await Promise.all([
+    fetchEmployees(),
+    fetchAssets(),
+    fetchAssignments(),
+    fetchMaintenance(),
+    fetchDashboard()
+]);
+console.log("Employees:", apiEmployees);
+console.log("Assets:", apiAssets);
+console.log("Assignments:", apiAssignments);
+console.log("Maintenance:", apiMaintenance);
+console.log("Dashboard:", dashboard);
+
+setEmployees(apiEmployees);
+
+const mappedAssets = apiAssets.map((a: any) => ({
+    id: a.assetId,
+    name: a.assetName,
+    category: a.category,
+    manufacturer: a.brand,
+    model: a.model,
+    serial: a.serialNumber,
+    purchaseDate: a.purchaseDate,
+    warrantyExpiry: "",
+    cost: Number(a.purchasePrice || 0),
+    location: "",
+    assignedTo: a.assignedTo || null,
+    status:
+        a.status === "AVAILABLE"
+            ? "Available"
+            : a.status === "ASSIGNED"
+            ? "Assigned"
+            : a.status === "MAINTENANCE"
+            ? "Maintenance"
+            : "Retired"
+}));
+
+setAssets(mappedAssets);
+console.log("Mapped Assets:", mappedAssets);
+
+setAssignments(apiAssignments);
+setMaintenance(apiMaintenance);
+
+setDashboardStats(dashboard);
+
+// Temporary until Ticket Lambda is implemented
       setTickets([]);
+    } catch (err: any) {
+    console.error(err);
+    const message = err.message || "Failed to load application data";
+    setError(message);
+    toast.error(message);
+    // Only clear tickets
+    setTickets([]);
     } finally {
       setLoading(false);
       setHydrated(true);
@@ -220,25 +274,63 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const deleteEmployee = async (id: string) => {
-    toast.error("Employee deletion is not available yet");
-  };
+const deleteEmployee = async (id: string) => {
+    try {
+        await apiDeleteEmployee(id);
+        await refreshData();
+        toast.success("Employee deleted successfully.");
+    } catch (err: any) {
+        toast.error(err.message || "Failed to delete employee");
+        throw err;
+    }
+};
+
+
 
   const assignAssets = async (employeeId: string, assetIds: string[]) => {
-    toast.error("Asset assignment is not available yet");
-  };
+
+    await createAssignment({
+        assetId: assetIds[0],
+        employeeId
+    });
+
+    await refreshData();
+
+    toast.success("Asset assigned successfully.");
+
+};
 
   const addAsset = async (assetData: any) => {
-    toast.error("Asset management is not available yet");
-    throw new Error("Asset management is not available yet");
-  };
+
+    await createAsset({
+        assetName: assetData.name,
+        category: assetData.category,
+        brand: assetData.manufacturer,
+        model: assetData.model,
+        serialNumber: assetData.serial,
+        purchaseDate: assetData.purchaseDate,
+        purchasePrice: assetData.cost,
+        vendor: ""
+    });
+
+    await refreshData();
+
+    toast.success("Asset added successfully.");
+
+};
 
   const retireAsset = async (id: string) => {
-    toast.error("Asset management is not available yet");
-  };
+
+    await deleteAsset(id);
+
+    await refreshData();
+
+    toast.success("Asset deleted successfully.");
+
+};
 
   const verifyOnboardingAsset = async (employeeId: string, approved: boolean, remarks: string, actor: string) => {
-    toast.error("Onboarding verification is not available yet");
+    toast.error("Onboarding allocation is not available yet");
   };
 
   const completeOnboardingAllocation = async (employeeId: string, assetId: string, remarks: string, actor: string) => {

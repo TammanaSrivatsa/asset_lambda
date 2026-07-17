@@ -20,9 +20,32 @@ import { toast } from "sonner";
 
 export default function AssetsPage() {
   const { assets, employees, addAsset, retireAsset } = useData();
-  const CATEGORIES = uniqueValues(assets.map(a => a.category));
-  const MANUFACTURERS = uniqueValues(assets.map(a => a.manufacturer));
-  const LOCATIONS = uniqueValues(assets.map(a => a.location));
+  console.log("Assets from Context:", assets);
+  console.log("Assets Length:", assets.length);
+  const CATEGORIES = [
+  "Laptop",
+  "Desktop",
+  "Monitor",
+  "Printer",
+  "Mobile",
+  "Keyboard",
+  "Mouse"
+];
+
+const MANUFACTURERS = [
+  "Dell",
+  "HP",
+  "Lenovo",
+  "Apple",
+  "Samsung"
+];
+
+const LOCATIONS = [
+  "Hyderabad",
+  "Bangalore",
+  "Chennai",
+  "Mumbai"
+];
   const [selected, setSelected] = useState<Asset | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [category, setCategory] = useState("all");
@@ -69,10 +92,14 @@ export default function AssetsPage() {
 
   const filtered = useMemo(() => {
     return assets.filter(a =>
-      (category === "all" || a.category === category) &&
-      (status === "all" || a.status === status)
+        (category === "all" || a.category === category) &&
+        (status === "all" || a.status === status)
     );
-  }, [assets, category, status]);
+}, [assets, category, status]);
+
+console.log("Filtered Assets:", filtered);
+console.log("Filtered Length:", filtered.length);
+console.log("First Asset:", assets[0]);
 
   const columns: ColumnDef<Asset>[] = [
     { accessorKey: "id", header: "Asset ID" },

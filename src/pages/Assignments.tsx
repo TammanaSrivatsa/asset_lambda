@@ -8,12 +8,16 @@ import type { Assignment } from "@/types/domain";
 import { useData } from "@/contexts/data";
 import { toast } from "sonner";
 import { ArrowLeftRight, RotateCcw, Plus } from "lucide-react";
+import {
+    updateAssignment,
+    deleteAssignment
+} from "@/services/data";
 
 export default function AssignmentsPage() {
-  const { assignments, assets, employees } = useData();
+  const { assignments, assets, employees, refreshData } = useData();
 
   const columns: ColumnDef<Assignment>[] = [
-    { accessorKey: "id", header: "Assignment ID" },
+    { accessorKey: "assignmentId", header: "Assignment ID" },
     { id: "asset", header: "Asset", cell: ({row}) => {
       const a = assets.find(x=>x.id===row.original.assetId);
       return <div><div className="font-medium">{a?.name}</div><div className="text-xs text-muted-foreground">{a?.id}</div></div>;
@@ -23,15 +27,41 @@ export default function AssignmentsPage() {
     { accessorKey: "expectedReturn", header: "Expected Return" },
     { accessorKey: "returnDate", header: "Return Date", cell: ({row}) => row.original.returnDate ?? <span className="text-muted-foreground">—</span> },
     { id: "status", header: "Status", cell: ({row}) => <StatusBadge status={row.original.status}/> },
-    { id: "actions", header: "", cell: () => (
-      <div className="flex gap-1">
-        <Button size="sm" variant="ghost" onClick={() => toast.success("Return recorded")}><RotateCcw className="h-3.5 w-3.5"/></Button>
-        <Button size="sm" variant="ghost" onClick={() => toast.success("Transfer initiated")}><ArrowLeftRight className="h-3.5 w-3.5"/></Button>
-      </div>
-    )},
-  ];
+    {
+  id: "actions",
+  header: "",
+  cell: ({ row }) => (
+    <div className="flex gap-1">
 
-  return (
+      <Button
+        size="sm"
+        variant="ghost"
+        onClick={async () => {
+          await updateAssignment(row.original.assignmentId);
+          await refreshData();
+          toast.success("Asset returned");
+        }}
+      >
+        <RotateCcw className="h-3.5 w-3.5" />
+      </Button>
+
+      <Button
+        size="sm"
+        variant="ghost"
+        onClick={async () => {
+          await deleteAssignment(row.original.assignmentId);
+          await refreshData();
+          toast.success("Assignment deleted");
+        }}
+      >
+        <ArrowLeftRight className="h-3.5 w-3.5" />
+      </Button>
+
+    </div>
+  ),
+},
+];
+return (
     <>
       <PageHeader
         title="Assignments"

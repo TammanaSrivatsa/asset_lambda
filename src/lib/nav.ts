@@ -2,7 +2,7 @@ import type { Role } from "@/types/domain";
 import {
   LayoutDashboard, Package, Ticket as TicketIcon, User, Users,
   Building2, Tags, Settings as SettingsIcon, FileBarChart,
-  ClipboardList, Wrench, ShoppingBag, BookOpen, PlusCircle, ScrollText, Calendar,
+  ClipboardList, Wrench, BookOpen, PlusCircle, ScrollText,
 } from "lucide-react";
 
 export interface NavItem {
@@ -72,15 +72,10 @@ export const NAV: Record<Role, NavGroup[]> = {
       label: "Inventory", items: [
         { to: "/assets", label: "Assets", icon: Package },
         { to: "/assignments", label: "Assignments", icon: ClipboardList },
-        { to: "/warranty", label: "Warranty", icon: Calendar },
         { to: "/maintenance", label: "Maintenance", icon: Wrench },
       ]
     },
-    {
-      label: "Partners", items: [
-        { to: "/vendors", label: "Vendors", icon: ShoppingBag },
-      ]
-    },
+
   ],
   lo_support: [
     {

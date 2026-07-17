@@ -48,9 +48,14 @@ function removeToken() {
 }
 
 const ROLE_MAP: Record<string, Role> = {
+  ADMIN: "admin",
+  EMPLOYEE: "employee",
+  IT_SUPPORT: "support",
+  ASSET_MANAGER: "asset_manager",
+
   Admin: "admin",
-  Manager: "asset_manager",
   Employee: "employee",
+  Manager: "asset_manager",
   "IT Support Team": "support",
 };
 
@@ -59,15 +64,17 @@ function mapBackendRole(raw: string): Role {
 }
 
 function mapBackendUser(bu: any): AuthUser {
-  const rawRole = bu.Role ?? bu.role ?? "Employee";
+  const rawRole = bu.role ?? "EMPLOYEE";
+
   return {
-    id: bu.id ?? bu.display_id,
-    display_id: bu.display_id ?? bu.id,
-    name: bu.name,
+    id: bu.userId,
+    display_id: bu.userId,
+    name: `${bu.firstName} ${bu.lastName}`,
     email: bu.email,
     role: mapBackendRole(rawRole),
-    avatar: bu.avatar ?? (bu.name?.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase() ?? "NA"),
-    must_change_password: bu.must_change_password ?? false,
+    avatar:
+      `${bu.firstName[0]}${bu.lastName[0]}`.toUpperCase(),
+    must_change_password: false,
   };
 }
 
@@ -114,10 +121,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ email, password }),
       });
       const body = await res.json();
-      if (res.ok && body.token && body.employee) {
+      if (res.ok && body.user) {
         setToken(body.token);
-        localStorage.setItem("itsm.employee", JSON.stringify(body.employee));
-        const mapped = mapBackendUser(body.employee);
+        localStorage.setItem("itsm.employee", JSON.stringify(body.user));
+        const mapped = mapBackendUser(body.user);
         setUser(mapped);
         toast.success(`Welcome back, ${mapped.name}`);
         return mapped;

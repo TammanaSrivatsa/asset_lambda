@@ -110,38 +110,22 @@ export interface Ticket {
 }
 
 export interface Assignment {
-  id: string;
-  uuid: string;
+  assignmentId: string;
   assetId: string;
   employeeId: string;
   assignedDate: string;
-  returnDate: string | null;
-  expectedReturn: string | null;
-  status: "Active" | "Returned" | "Transferred";
-}
-
-export interface Vendor {
-  id: string;
-  uuid: string;
-  name: string;
-  contact: string;
-  email: string;
-  phone: string;
-  category: string;
-  status: "Active" | "Inactive";
-  contractEnd: string;
+  status: "ACTIVE" | "RETURNED";
+  createdAt: string;
 }
 
 export interface Maintenance {
-  id: string;
-  uuid: string;
+  maintenanceId: string;
   assetId: string;
-  engineer: string;
-  date: string;
-  resolution: string;
-  parts: string;
-  cost: number;
-  status: "Completed" | "In Progress" | "Scheduled";
+  issue: string;
+  reportedBy: string;
+  technician: string;
+  status: string;
+  createdAt: string;
 }
 
 export interface DashboardStats {
