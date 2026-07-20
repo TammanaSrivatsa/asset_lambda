@@ -21,7 +21,10 @@ interface AuthCtx {
   loading: boolean;
   login: (email: string, password: string) => Promise<AuthUser>;
   logout: () => void;
-  forceChangePassword: (password: string) => Promise<void>;
+  forceChangePassword: (
+    currentPassword: string,
+    newPassword: string
+  ) => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
 
@@ -74,7 +77,7 @@ function mapBackendUser(bu: any): AuthUser {
     role: mapBackendRole(rawRole),
     avatar:
       `${bu.firstName[0]}${bu.lastName[0]}`.toUpperCase(),
-    must_change_password: false,
+    must_change_password: bu.forcePasswordChange ?? false,
   };
 }
 
@@ -122,9 +125,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       const body = await res.json();
       if (res.ok && body.user) {
-        setToken(body.token);
-        localStorage.setItem("itsm.employee", JSON.stringify(body.user));
-        const mapped = mapBackendUser(body.user);
+        setToken("authenticated");
+        const backendUser = {
+          ...body.user,
+          forcePasswordChange: body.forcePasswordChange,
+        };
+
+        localStorage.setItem(
+          "itsm.employee",
+          JSON.stringify(backendUser)
+        );
+
+const mapped = mapBackendUser(backendUser);
         setUser(mapped);
         toast.success(`Welcome back, ${mapped.name}`);
         return mapped;
@@ -144,22 +156,51 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     toast.info("Signed out of session");
   };
 
-  const forceChangePassword = async (password: string) => {
-    const token = getToken();
-    if (!token) throw new Error("You must be signed in to change your password.");
-    const res = await fetch(`${API_BASE}/auth/force-change-password`, {
-      method: "POST",
+  const forceChangePassword = async (
+    currentPassword: string,
+    newPassword: string
+  ) => {
+    if (!user) {
+      throw new Error("User not found.");
+    }
+    console.log("Password Change Request:", {
+      email: user.email,
+      currentPassword,
+      newPassword,
+    });
+
+    const res = await fetch(`${API_BASE}/auth/change-password`, {
+      method: "PUT",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ new_password: password }),
+      body: JSON.stringify({
+        email: user.email,
+        currentPassword,
+        newPassword,
+      }),
     });
+
     const body = await res.json();
-    if (!res.ok || !body.success) {
-      throw new Error(body.message || body.detail || "Failed to change password");
+
+    if (!res.ok) {
+      throw new Error(body.message || "Failed to change password");
     }
-    await refreshProfile();
+
+    const cached = localStorage.getItem("itsm.employee");
+    if (cached) {
+      const backendUser = JSON.parse(cached);
+
+      backendUser.forcePasswordChange = false;
+
+      localStorage.setItem(
+        "itsm.employee",
+        JSON.stringify(backendUser)
+      );
+
+      setUser(mapBackendUser(backendUser));
+    }
+
     toast.success("Password changed successfully!");
   };
 
