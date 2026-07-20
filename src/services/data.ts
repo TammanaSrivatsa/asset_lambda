@@ -48,7 +48,7 @@ export function mapEmployee(user: any): Employee {
     email: user.email,
 
     role:
-      user.role === "IT_SUPPORT"
+      user.role === "SUPPORT"
         ? "support"
         : user.role === "ASSET_MANAGER"
         ? "asset_manager"
@@ -106,7 +106,6 @@ export async function createEmployee(payload: any) {
       firstName: payload.name.split(" ")[0],
       lastName: payload.name.split(" ").slice(1).join(" "),
       email: payload.email,
-      password: "Welcome@123",
       role:
         payload.role === "support"
           ? "IT_SUPPORT"
@@ -120,7 +119,7 @@ export async function createEmployee(payload: any) {
 }
 
 export async function deleteEmployee(id: string) {
-  return apiFetch(`/admin/users/${id}`, {
+  return apiFetch(`/employees/${id}`, {
     method: "DELETE"
   });
 }

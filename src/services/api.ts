@@ -1,6 +1,6 @@
 const BASE_URL =
   import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "") ??
-  "http://localhost:8000/api";
+  "https://l8w7k68xt5.execute-api.us-east-1.amazonaws.com";
 
 function getToken(): string | null {
   if (typeof window === "undefined") return null;

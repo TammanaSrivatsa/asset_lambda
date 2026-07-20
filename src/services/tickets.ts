@@ -1,4 +1,4 @@
-import { apiFetch, apiUpload } from "./api";
+import { apiFetch } from "./api";
 import type { Ticket, Role } from "@/types/domain";
 
 interface BackendTicket {
@@ -109,13 +109,29 @@ function mapTicket(bt: BackendTicket): Ticket {
 }
 
 export async function fetchTickets(role?: string): Promise<{ tickets: Ticket[]; total: number }> {
-  let path = "/it-tickets";
-  if (role === "employee") path = "/employee-tickets";
-  else if (role === "admin") path = "/admin-tickets";
+  const data = await apiFetch<{ success: boolean; tickets: any[] }>("/tickets");
+  const tickets = (data.tickets || []).map((t: any) => ({
+    id: t.ticketId,
+    uuid: t.ticketId,
+    title: t.title,
+    description: t.description,
+    priority: t.priority,
+    category: t.category,
+    status: t.status,
+    createdBy: t.employeeId,
+    assignee: t.assignedTo,
+    assetId: t.assetId,
+    createdAt: t.createdAt,
+    updatedAt: t.updatedAt,
+    comments: t.comments || [],
+    attachments: [],
+    timeline: t.timeline || [],
+  }));
 
-  const data = await apiFetch<BackendTicket[]>(path);
-  const tickets = (Array.isArray(data) ? data : []).map(mapTicket);
-  return { tickets, total: tickets.length };
+  return {
+    tickets,
+    total: data.tickets.length,
+  };
 }
 
 export async function createTicket(
@@ -128,11 +144,30 @@ export async function createTicket(
     attachments?: string[];
   },
 ): Promise<Ticket> {
-  const data = await apiFetch<BackendTicket>("/create-ticket", {
+  const response = await apiFetch<any>("/tickets", {
     method: "POST",
     body: JSON.stringify(payload),
   });
-  return mapTicket(data);
+
+  const t = response.ticket;
+
+  return {
+    id: t.ticketId,
+    uuid: t.ticketId,
+    title: t.title,
+    description: t.description,
+    priority: t.priority,
+    category: t.category,
+    status: t.status,
+    createdBy: t.employeeId,
+    assignee: t.assignedTo,
+    assetId: t.assetId,
+    createdAt: t.createdAt,
+    updatedAt: t.updatedAt,
+    comments: t.comments || [],
+    attachments: [],
+    timeline: t.timeline || [],
+  } as Ticket;
 }
 
 export async function updateTicketStatus(
@@ -140,27 +175,40 @@ export async function updateTicketStatus(
   status: string,
   comment?: string,
 ): Promise<Ticket> {
-  const data = await apiFetch<BackendTicket>("/update-ticket", {
+  const response = await apiFetch<any>(`/tickets/${ticketId}`, {
     method: "PUT",
-    body: JSON.stringify({ ticket_id: ticketId, status, comment }),
+    body: JSON.stringify({
+      status,
+      comment,
+    }),
   });
-  return mapTicket(data);
+
+  const t = response.ticket;
+
+  return {
+    id: t.ticketId,
+    uuid: t.ticketId,
+    title: t.title,
+    description: t.description,
+    priority: t.priority,
+    category: t.category,
+    status: t.status,
+    createdBy: t.employeeId,
+    assignee: t.assignedTo,
+    assetId: t.assetId,
+    createdAt: t.createdAt,
+    updatedAt: t.updatedAt,
+    comments: t.comments || [],
+    attachments: [],
+    timeline: t.timeline || [],
+  } as Ticket;
 }
 
-export async function addTicketComment(
-  ticketId: string,
-  message: string,
-): Promise<void> {
-  await apiFetch("/add-comment", {
-    method: "POST",
-    body: JSON.stringify({ ticket_id: ticketId, message }),
-  });
+export async function addTicketComment(): Promise<void> {
+  console.log("Comment feature not implemented yet.");
 }
 
-export async function uploadFiles(files: FileList): Promise<string[]> {
-  const fd = new FormData();
-  for (let i = 0; i < files.length; i++) {
-    fd.append("files", files[i]);
-  }
-  return apiUpload("/upload-attachment", fd);
+export async function uploadFiles(): Promise<string[]> {
+  console.log("Upload feature not implemented yet.");
+  return [];
 }

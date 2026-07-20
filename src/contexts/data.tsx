@@ -85,13 +85,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
     apiAssets,
     apiAssignments,
     apiMaintenance,
-    dashboard
+    dashboard,
+    ticketResponse
 ] = await Promise.all([
     fetchEmployees(),
     fetchAssets(),
     fetchAssignments(),
     fetchMaintenance(),
-    fetchDashboard()
+    fetchDashboard(),
+    apiFetchTickets(user?.role),
 ]);
 console.log("Employees:", apiEmployees);
 console.log("Assets:", apiAssets);
@@ -128,19 +130,15 @@ console.log("Mapped Assets:", mappedAssets);
 
 setAssignments(apiAssignments);
 setMaintenance(apiMaintenance);
-
 setDashboardStats(dashboard);
-
-// Temporary until Ticket Lambda is implemented
-      setTickets([]);
+setTickets(ticketResponse.tickets);
     } catch (err: any) {
-    console.error(err);
-    const message = err.message || "Failed to load application data";
-    setError(message);
-    toast.error(message);
-    // Only clear tickets
-    setTickets([]);
-    } finally {
+          console.error(err);
+          const message = err.message || "Failed to load application data";
+          setError(message);
+          toast.error(message);
+          setTickets([]);
+      } finally {
       setLoading(false);
       setHydrated(true);
     }
