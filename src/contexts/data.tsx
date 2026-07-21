@@ -19,7 +19,9 @@ import {
   deleteAsset,
   fetchAssignments,
   createAssignment,
-  fetchMaintenance
+  fetchMaintenance,
+  verifyEmployee,
+  completeAllocation
 } from "@/services/data";
 import { useAuth } from "@/contexts/auth";
 import { toast } from "sonner";
@@ -76,9 +78,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [hydrated, setHydrated] = useState(false);
 
   const loadAllData = useCallback(async () => {
+    if (!user) {
+        return;
+    }
     setLoading(true);
     setError(null);
-
     try {
       const [
     apiEmployees,
@@ -145,8 +149,11 @@ setTickets(ticketResponse.tickets);
   }, [user?.role]);
 
   useEffect(() => {
+    if (!user) {
+        return;
+    }
     loadAllData();
-  }, [loadAllData]);
+}, [user, loadAllData]);
 
   const refreshData = useCallback(async () => {
     await loadAllData();
@@ -181,7 +188,7 @@ setTickets(ticketResponse.tickets);
 
   const updateTicketStatusFn = async (ticketId: string, statusVal: Ticket["status"], actor: string, role: Role, comment?: string) => {
     try {
-      const updated = await apiUpdateTicketStatus(ticketId, statusVal, comment);
+      const updated = await apiUpdateTicketStatus(ticketId, statusVal, user!.role, comment);
       setTickets((prev) => prev.map((t) => (t.id === ticketId ? updated : t)));
       await refreshData();
     } catch (err: any) {
@@ -191,7 +198,7 @@ setTickets(ticketResponse.tickets);
 
   const acceptTicket = async (ticketId: string, actor: string) => {
     try {
-      const updated = await apiUpdateTicketStatus(ticketId, "Assigned", "Ticket accepted");
+      const updated = await apiUpdateTicketStatus(ticketId, "Assigned", user!.role,"Ticket accepted");
       setTickets((prev) => prev.map((t) => (t.id === ticketId ? updated : t)));
       await refreshData();
     } catch (err: any) {
@@ -201,7 +208,7 @@ setTickets(ticketResponse.tickets);
 
   const escalateTicket = async (ticketId: string, actor: string, remarks: string) => {
     try {
-      const updated = await apiUpdateTicketStatus(ticketId, "Escalated", remarks);
+      const updated = await apiUpdateTicketStatus(ticketId, "Escalated", user!.role, remarks);
       setTickets((prev) => prev.map((t) => (t.id === ticketId ? updated : t)));
       await refreshData();
     } catch (err: any) {
@@ -214,6 +221,7 @@ setTickets(ticketResponse.tickets);
       const updated = await apiUpdateTicketStatus(
         ticketId,
         approved ? "Approved for Asset Manager" : "Open",
+        user!.role,
         remarks
       );
       setTickets((prev) => prev.map((t) => (t.id === ticketId ? updated : t)));
@@ -225,7 +233,7 @@ setTickets(ticketResponse.tickets);
 
   const resolveAssetTicket = async (ticketId: string, actor: string, details: any) => {
     try {
-      const updated = await apiUpdateTicketStatus(ticketId, "Resolved", details.remarks);
+      const updated = await apiUpdateTicketStatus(ticketId, "Resolved", user!.role, details.remarks);
       setTickets((prev) => prev.map((t) => (t.id === ticketId ? updated : t)));
       await refreshData();
     } catch (err: any) {
@@ -236,7 +244,8 @@ setTickets(ticketResponse.tickets);
   const addTicketCommentFn = async (ticketId: string, actor: string, role: Role, message: string) => {
     try {
       await apiAddTicketComment(ticketId, message);
-      const { tickets: refreshed } = await apiFetchTickets(user?.role);
+      if (!user?.role) return;
+      const { tickets: refreshed } = await apiFetchTickets(user.role);
       const updated = refreshed.find((t) => t.id === ticketId);
       if (updated) {
         setTickets((prev) => prev.map((t) => (t.id === ticketId ? updated : t)));
@@ -327,13 +336,52 @@ const deleteEmployee = async (id: string) => {
 
 };
 
-  const verifyOnboardingAsset = async (employeeId: string, approved: boolean, remarks: string, actor: string) => {
-    toast.error("Onboarding allocation is not available yet");
-  };
+  const verifyOnboardingAsset = async (
+    employeeId: string,
+    approved: boolean,
+    remarks: string,
+    actor: string
+) => {
+    try {
 
-  const completeOnboardingAllocation = async (employeeId: string, assetId: string, remarks: string, actor: string) => {
-    toast.error("Onboarding allocation is not available yet");
-  };
+        if (!approved) {
+            toast.warning("Employee marked as Waiting for Inventory.");
+            return;
+        }
+
+        await verifyEmployee(employeeId, remarks);
+
+        await refreshData();
+
+        toast.success("Employee verified successfully.");
+
+    } catch (err: any) {
+        toast.error(err.message || "Failed to verify employee");
+    }
+};
+
+  const completeOnboardingAllocation = async (
+    employeeId: string,
+    assetId: string,
+    remarks: string,
+    actor: string
+) => {
+    try {
+
+        await completeAllocation(
+            employeeId,
+            assetId,
+            remarks
+        );
+
+        await refreshData();
+
+        toast.success("Asset allocated successfully.");
+
+    } catch (err: any) {
+        toast.error(err.message || "Failed to allocate asset");
+    }
+};
 
   const fetchFullProfile = async (userUuid: string) => {
     const employee = employees.find((e) => e.id === userUuid || e.uuid === userUuid);

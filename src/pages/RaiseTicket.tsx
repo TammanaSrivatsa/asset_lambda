@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useAuth } from "@/contexts/auth";
 import { useData } from "@/contexts/data";
 
@@ -31,17 +31,36 @@ export default function RaiseTicket() {
   const nav = useNavigate();
   const { user } = useAuth();
   const { assets, tickets, createTicket, uploadFiles } = useData();
-  const TICKET_CATEGORIES = useMemo(() => {
-    const cats = new Set(tickets.map(t => t.category).filter(Boolean));
-    return Array.from(cats).sort();
-  }, [tickets]);
-  const [attachments, setAttachments] = useState<string[]>([]);
-  const [uploading, setUploading] = useState(false);
 
-  const { register, handleSubmit, setValue, watch, formState: { errors }, reset } = useForm<FormV>({
+  const TICKET_CATEGORIES = [
+    "Hardware",
+    "Software",
+    "Network",
+    "Email",
+    "Printer",
+    "Account Access",
+    "Security",
+    "Other",
+  ];
+
+  const [attachments, setAttachments] = useState<string[]>([]);
+
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    watch,
+    formState: { errors },
+    reset,
+  } = useForm<FormV>({
     resolver: zodResolver(schema),
-    defaultValues: { priority: "Medium", category: "", assetId: "" },
+    defaultValues: {
+      priority: "Medium",
+      category: "",
+      assetId: "",
+    },
   });
+  const [uploading, setUploading] = useState(false);
   const priority = watch("priority");
   const category = watch("category");
 
@@ -73,9 +92,8 @@ export default function RaiseTicket() {
         priority: v.priority,
         category: v.category,
         assetId: v.assetId || null,
-        createdBy: user?.name || "Employee User",
         attachments,
-      }, user?.name || "Employee User");
+      });
 
       toast.success("Ticket submitted - we'll get back to you shortly", {
         description: `Priority: ${v.priority} - Category: ${v.category}`,

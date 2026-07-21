@@ -124,11 +124,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ email, password }),
       });
       const body = await res.json();
-      if (res.ok && body.user) {
-        setToken("authenticated");
+      console.log("LOGIN RESPONSE:", body);
+      console.log("res.ok =", res.ok);
+      console.log("body.user =", body.user);
+      console.log("body.token =", body.token);
+      if (res.ok && body.user && body.token) {
+        setToken(body.token);
         const backendUser = {
-          ...body.user,
-          forcePasswordChange: body.forcePasswordChange,
+            ...body.user,
+            forcePasswordChange: body.forcePasswordChange,
         };
 
         localStorage.setItem(

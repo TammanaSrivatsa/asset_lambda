@@ -48,11 +48,13 @@ export default function AllocationOnboardingPage() {
   };
 
   const dueAllocations = useMemo(() => {
-    return employees.filter(emp => emp.allocationStatus === "Ready for Allocation");
+    return employees.filter(
+      emp => emp.allocationStatus === "Ready for Asset Allocation"
+    );
   }, [employees]);
 
   const allocationHistory = useMemo(() => {
-    return employees.filter(emp => emp.allocationStatus === "Completed");
+    return employees.filter(emp => emp.allocationStatus === "Allocated");
   }, [employees]);
 
   const availableAssets = useMemo(() => {

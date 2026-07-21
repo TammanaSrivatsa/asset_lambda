@@ -54,10 +54,10 @@ export function mapEmployee(user: any): Employee {
         ? "asset_manager"
         : "employee",
 
-    department: "",
-    designation: "",
-    manager: "",
-    location: "",
+    department: user.department ?? "",
+    designation: user.designation ?? "",
+    manager: user.manager ?? "",
+    location: user.location ?? "",
 
     status:
       user.status === "ACTIVE"
@@ -71,10 +71,10 @@ export function mapEmployee(user: any): Employee {
 
     joinDate: user.createdAt,
 
-    allocationDate: undefined,
-    allocationTime: undefined,
-    allocationStatus: undefined,
-    requiredAssetCategory: undefined
+    allocationDate: user.allocationDate,
+    allocationTime: user.allocationTime,
+    allocationStatus: user.allocationStatus,
+    requiredAssetCategory: user.requiredAssetCategory,
   };
 }
 
@@ -190,7 +190,32 @@ export async function createAssignment(payload: any) {
   });
 
 }
+export async function completeAllocation(
+  employeeId: string,
+  assetId: string,
+  remarks: string
+) {
+  return apiFetch("/support/onboarding/allocate", {
+    method: "POST",
+    body: JSON.stringify({
+      employeeId,
+      assetIds: [assetId],
+      remarks,
+    }),
+  });
+}
 
+export async function verifyEmployee(
+  userId: string,
+  remarks: string
+) {
+  return apiFetch(`/support/onboarding/${userId}/verify`, {
+    method: "PUT",
+    body: JSON.stringify({
+      remarks,
+    }),
+  });
+}
 export async function updateAssignment(id: string) {
 
   return apiFetch(`/assignments/${id}`, {
