@@ -1,6 +1,32 @@
   import { apiFetch } from "./api";
   import type { Ticket, Role } from "@/types/domain";
 
+  function displayStatus(status?: string): string {
+  switch ((status || "").replace(/\s+/g, "_").toUpperCase()) {
+    case "OPEN":
+      return "Open";
+
+    case "ASSIGNED":
+      return "Accepted";
+
+    case "IN_PROGRESS":
+      return "In Progress";
+
+    case "WAITING":
+    case "WAITING_FOR_USER":
+      return "Waiting for User";
+
+    case "RESOLVED":
+      return "Resolved";
+
+    case "CLOSED":
+      return "Closed";
+
+    default:
+      return status || "";
+  }
+}
+
   interface BackendTicket {
     id: string;
     display_id: string;
@@ -117,6 +143,7 @@
     console.log("Calling endpoint:", endpoint);
 
     const data = await apiFetch<{ success: boolean; tickets: any[] }>(endpoint);
+    console.log("Backend ticket statuses:", data.tickets.map((t: any) => t.status));
     const tickets = (data.tickets || []).map((t: any) => ({
       id: t.ticketId,
       uuid: t.ticketId,
@@ -124,7 +151,7 @@
       description: t.description,
       priority: t.priority,
       category: t.category,
-      status: t.status,
+      status: displayStatus(t.status),
       createdBy: t.employeeId,
       assignee: t.assignedTo,
       assetId: t.assetId,
@@ -165,7 +192,7 @@
       description: t.description,
       priority: t.priority,
       category: t.category,
-      status: t.status,
+      status: displayStatus(t.status),
       createdBy: t.employeeId,
       assignee: t.assignedTo,
       assetId: t.assetId,
@@ -207,7 +234,7 @@ console.log("Update Endpoint:", endpoint);
       description: t.description,
       priority: t.priority,
       category: t.category,
-      status: t.status,
+      status: displayStatus(t.status),
       createdBy: t.employeeId,
       assignee: t.assignedTo,
       assetId: t.assetId,

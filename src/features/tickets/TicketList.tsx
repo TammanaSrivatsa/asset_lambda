@@ -103,20 +103,24 @@ export function TicketList({ title, description, filter, actions, workflowRole }
     // 1. Tab Status Filter
     if (tab !== "all") {
       list = list.filter((t) => {
-        if (tab === "OPEN") return normalizeStatus(t.status) === "OPEN";
-  
-        if (tab === "ACCEPTED")
-          return ["ASSIGNED", "ACCEPTED"].includes(normalizeStatus(t.status));
-    
-        if (tab === "IN PROGRESS")
-          return normalizeStatus(t.status) === "IN_PROGRESS";
-    
-        if (tab === "WAITING FOR USER")
-          return ["WAITING", "WAITING FOR USER"].includes(normalizeStatus(t.status));
-    
-        if (tab === "RESOLVED") return normalizeStatus(t.status) === "RESOLVED";
-    
-        if (tab === "CLOSED") return normalizeStatus(t.status) === "CLOSED";
+        const status = normalizeStatus(t.status);
+        if (tab === "Open")
+          return status === "OPEN";
+
+        if (tab === "Accepted")
+          return status === "ASSIGNED" || status === "ACCEPTED";
+
+        if (tab === "In Progress")
+          return status === "IN_PROGRESS";
+
+        if (tab === "Waiting for User")
+          return status === "WAITING" || status === "WAITING_FOR_USER";
+
+        if (tab === "Resolved")
+          return status === "RESOLVED";
+
+        if (tab === "Closed")
+          return status === "CLOSED";
 
         return true;
       });
@@ -125,9 +129,26 @@ export function TicketList({ title, description, filter, actions, workflowRole }
     // 2. Select Status Filter
     if (statusFilter !== "all") {
       list = list.filter((t) => {
-        if (statusFilter === "Accepted") return t.status === "Assigned" || t.status === "Accepted";
-        if (statusFilter === "Waiting for User") return t.status === "Waiting" || t.status === "Waiting for User";
-        return t.status === statusFilter;
+        const status = normalizeStatus(t.status);
+        if (statusFilter === "Open")
+          return status === "OPEN";
+
+        if (statusFilter === "Accepted")
+          return status === "ASSIGNED" || status === "ACCEPTED";
+
+        if (statusFilter === "In Progress")
+          return status === "IN_PROGRESS";
+
+        if (statusFilter === "Waiting for User")
+          return status === "WAITING" || status === "WAITING_FOR_USER";
+
+        if (statusFilter === "Resolved")
+          return status === "RESOLVED";
+
+        if (statusFilter === "Closed")
+          return status === "CLOSED";
+
+        return true;
       });
     }
 
