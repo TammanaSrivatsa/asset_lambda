@@ -3,37 +3,52 @@ import { cn } from "@/lib/utils";
 
 const MAP: Record<string, string> = {
   // ticket status
-  "Open": "bg-info/15 text-info border-info/20",
-  "Assigned": "bg-primary/15 text-primary border-primary/20",
-  "In Progress": "bg-warning/15 text-warning border-warning/20",
-  "Waiting": "bg-muted text-muted-foreground border",
-  "Escalated": "bg-warning/15 text-warning border-warning/20",
-  "Pending Administration Approval": "bg-warning/15 text-warning border-warning/20",
-  "Approved for Asset Manager": "bg-primary/15 text-primary border-primary/20",
-  "Resolved": "bg-success/15 text-success border-success/20",
-  "Closed": "bg-muted text-muted-foreground border",
+  "Open": "bg-blue-500/10 text-blue-600 border-blue-500/20 dark:bg-blue-500/20 dark:text-blue-400",
+  "Accepted": "bg-indigo-500/10 text-indigo-600 border-indigo-500/20 dark:bg-indigo-500/20 dark:text-indigo-400",
+  "Assigned": "bg-indigo-500/10 text-indigo-600 border-indigo-500/20 dark:bg-indigo-500/20 dark:text-indigo-400",
+  "In Progress": "bg-orange-500/10 text-orange-600 border-orange-500/20 dark:bg-orange-500/20 dark:text-orange-400",
+  "Waiting": "bg-yellow-500/10 text-yellow-600 border-yellow-500/20 dark:bg-yellow-500/20 dark:text-yellow-400",
+  "Waiting for User": "bg-yellow-500/10 text-yellow-600 border-yellow-500/20 dark:bg-yellow-500/20 dark:text-yellow-400",
+  "Escalated": "bg-red-500/10 text-red-600 border-red-500/20 dark:bg-red-500/20 dark:text-red-400",
+  "Pending Administration Approval": "bg-yellow-500/10 text-yellow-600 border-yellow-500/20 dark:bg-yellow-500/20 dark:text-yellow-400",
+  "Approved for Asset Manager": "bg-indigo-500/10 text-indigo-600 border-indigo-500/20 dark:bg-indigo-500/20 dark:text-indigo-400",
+  "Resolved": "bg-green-500/10 text-green-600 border-green-500/20 dark:bg-green-500/20 dark:text-green-400",
+  "Closed": "bg-gray-500/10 text-gray-600 border-gray-500/20 dark:bg-gray-500/20 dark:text-gray-400",
+  
   // asset status
-  "Available": "bg-success/15 text-success border-success/20",
+  "Available": "bg-green-500/10 text-green-600 border-green-500/20 dark:bg-green-500/20 dark:text-green-400",
   "Maintenance": "bg-warning/15 text-warning border-warning/20",
   "Retired": "bg-muted text-muted-foreground border",
+  
   // priority
-  "Low": "bg-muted text-muted-foreground border",
-  "Medium": "bg-info/15 text-info border-info/20",
-  "High": "bg-warning/15 text-warning border-warning/20",
-  "Critical": "bg-destructive/15 text-destructive border-destructive/20",
+  "Low": "bg-blue-500/10 text-blue-600 border-blue-500/20 dark:bg-blue-500/20 dark:text-blue-400",
+  "Medium": "bg-orange-500/10 text-orange-600 border-orange-500/20 dark:bg-orange-500/20 dark:text-orange-400",
+  "High": "bg-red-500/10 text-red-600 border-red-500/20 dark:bg-red-500/20 dark:text-red-400",
+  "Critical": "bg-red-500/10 text-red-600 border-red-500/20 dark:bg-red-500/20 dark:text-red-400 font-bold",
+  
   // sla
-  "On Track": "bg-success/15 text-success border-success/20",
-  "At Risk": "bg-warning/15 text-warning border-warning/20",
-  "Breached": "bg-destructive/15 text-destructive border-destructive/20",
-  // employee
-  "Active": "bg-success/15 text-success border-success/20",
+  "On Track": "bg-green-500/10 text-green-600 border-green-500/20 dark:bg-green-500/20 dark:text-green-400",
+  "At Risk": "bg-yellow-500/10 text-yellow-600 border-yellow-500/20 dark:bg-yellow-500/20 dark:text-yellow-400",
+  "Breached": "bg-red-500/10 text-red-600 border-red-500/20 dark:bg-red-500/20 dark:text-red-400",
+  
+  // employee / onboarding
+  "Active": "bg-green-500/10 text-green-600 border-green-500/20 dark:bg-green-500/20 dark:text-green-400",
+  "ACTIVE": "bg-green-500/10 text-green-600 border-green-500/20 dark:bg-green-500/20 dark:text-green-400",
   "Inactive": "bg-muted text-muted-foreground border",
   "On Leave": "bg-warning/15 text-warning border-warning/20",
   "Returned": "bg-muted text-muted-foreground border",
-  "Transferred": "bg-info/15 text-info border-info/20",
-  "Completed": "bg-success/15 text-success border-success/20",
-  "Scheduled": "bg-info/15 text-info border-info/20",
-  "Pending": "bg-warning/15 text-warning border-warning/20",
+  "RETURNED": "bg-gray-500/10 text-gray-600 border-gray-500/20 dark:bg-gray-500/20 dark:text-gray-400",
+  "Transferred": "bg-blue-500/10 text-blue-600 border-blue-500/20 dark:bg-blue-500/20 dark:text-blue-400",
+  "Completed": "bg-green-500/10 text-green-600 border-green-500/20 dark:bg-green-500/20 dark:text-green-400",
+  "Scheduled": "bg-blue-500/10 text-blue-600 border-blue-500/20 dark:bg-blue-500/20 dark:text-blue-400",
+  "Pending": "bg-yellow-500/10 text-yellow-600 border-yellow-500/20 dark:bg-yellow-500/20 dark:text-yellow-400",
+  "Awaiting Asset Verification": "bg-yellow-500/10 text-yellow-600 border-yellow-500/20 dark:bg-yellow-500/20 dark:text-yellow-400",
+  "Pending Asset Manager Review": "bg-yellow-500/10 text-yellow-600 border-yellow-500/20 dark:bg-yellow-500/20 dark:text-yellow-400",
+  "Waiting for Inventory": "bg-red-500/10 text-red-600 border-red-500/20 dark:bg-red-500/20 dark:text-red-400",
+  "Out of Stock": "bg-red-500/10 text-red-600 border-red-500/20 dark:bg-red-500/20 dark:text-red-400",
+  "Ready for Allocation": "bg-indigo-500/10 text-indigo-600 border-indigo-500/20 dark:bg-indigo-500/20 dark:text-indigo-400",
+  "Ready for Asset Allocation": "bg-indigo-500/10 text-indigo-600 border-indigo-500/20 dark:bg-indigo-500/20 dark:text-indigo-400",
+  "Allocated": "bg-green-500/10 text-green-600 border-green-500/20 dark:bg-green-500/20 dark:text-green-400",
 };
 
 export function StatusBadge({ status }: { status: string }) {

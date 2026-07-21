@@ -1,34 +1,43 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { PageHeader } from "@/components/common/PageHeader";
 import { DataTable } from "@/components/common/DataTable";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useData } from "@/contexts/data";
 import type { Employee } from "@/types/domain";
 import { toast } from "sonner";
-import { Laptop, ArrowRight, User, Search } from "lucide-react";
+import { Laptop, ArrowRight, User, Search, Inbox, ShieldCheck, HelpCircle } from "lucide-react";
 
 export default function AllocationOnboardingPage() {
-  const { employees, assets, completeOnboardingAllocation } = useData();
+  const { employees, assets, completeOnboardingAllocation, refreshData } = useData();
 
+  const [tab, setTab] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // Modal Control
   const [assigningEmployee, setAssigningEmployee] = useState<Employee | null>(null);
   const [selectedAssetId, setSelectedAssetId] = useState<string>("");
   const [assetSearch, setAssetSearch] = useState("");
   const [remarks, setRemarks] = useState("");
   const [filterByLocation, setFilterByLocation] = useState(true);
 
-  const isAllocationDue = (dateStr?: string, timeStr?: string) => {
-    if (!dateStr || !timeStr) return false;
-    const scheduled = new Date(`${dateStr}T${timeStr}:00`);
-    return new Date() >= scheduled;
-  };
+  useEffect(() => {
+    refreshData();
+  }, []);
 
   const formatDateTime = (dateStr?: string, timeStr?: string) => {
     if (!dateStr || !timeStr) return "";
@@ -40,26 +49,66 @@ export default function AllocationOnboardingPage() {
         year: "numeric",
         hour: "numeric",
         minute: "2-digit",
-        hour12: true
+        hour12: true,
       });
     } catch (e) {
       return `${dateStr} ${timeStr}`;
     }
   };
 
-  const dueAllocations = useMemo(() => {
-    return employees.filter(
-      emp => emp.allocationStatus === "Ready for Asset Allocation"
+  // Helper to extract approval data
+  const getApprovalDetails = (emp: Employee) => {
+    const verifyStep = emp.allocationHistory?.find(
+      (h) =>
+        h.step === "Inventory Verified" ||
+        h.step === "Ready for Allocation" ||
+        h.step === "Ready for Asset Allocation"
     );
+    return {
+      approvedBy: verifyStep?.actor || emp.allocatedAssetDetails?.assignedBy || "Asset Manager",
+      approvalDate: verifyStep?.timestamp || emp.allocatedAssetDetails?.assignedAt || emp.joinDate || "—",
+    };
+  };
+
+  // Filtered Onboarding Employees
+  const onboardingEmployees = useMemo(() => {
+    return employees.filter((emp) => emp.allocationStatus);
   }, [employees]);
 
-  const allocationHistory = useMemo(() => {
-    return employees.filter(emp => emp.allocationStatus === "Allocated");
-  }, [employees]);
+  const filteredEmployees = useMemo(() => {
+    let list = onboardingEmployees;
+
+    // 1. Tab Status Filter
+    if (tab !== "all") {
+      list = list.filter((emp) => {
+        const status = emp.allocationStatus;
+        if (tab === "pending_support") return status === "Ready for Allocation" || status === "Ready for Asset Allocation";
+        if (tab === "verified") return status === "Ready for Allocation" || status === "Ready for Asset Allocation";
+        if (tab === "pending_review") return status === "Awaiting Asset Verification" || status === "Pending Asset Manager Review";
+        if (tab === "allocated") return status === "Allocated" || status === "Completed";
+        if (tab === "out_of_stock") return status === "Waiting for Inventory" || status === "Out of Stock";
+        return true;
+      });
+    }
+
+    // 2. Search Text Query
+    if (searchQuery.trim() !== "") {
+      const q = searchQuery.toLowerCase();
+      list = list.filter(
+        (emp) =>
+          emp.id.toLowerCase().includes(q) ||
+          emp.name.toLowerCase().includes(q) ||
+          emp.department.toLowerCase().includes(q) ||
+          (emp.requiredAssetCategory && emp.requiredAssetCategory.toLowerCase().includes(q))
+      );
+    }
+
+    return list;
+  }, [onboardingEmployees, tab, searchQuery]);
 
   const availableAssets = useMemo(() => {
     if (!assigningEmployee) return [];
-    return assets.filter(asset => {
+    return assets.filter((asset) => {
       if (asset.status !== "Available") return false;
       if (asset.category !== (assigningEmployee.requiredAssetCategory || "Laptop")) return false;
       if (filterByLocation && asset.location !== assigningEmployee.location) return false;
@@ -85,102 +134,195 @@ export default function AllocationOnboardingPage() {
     setFilterByLocation(true);
   };
 
-  const handleConfirmAssignment = () => {
+  const handleConfirmAssignment = async () => {
     if (!assigningEmployee || !selectedAssetId) return;
-    const asset = assets.find(a => a.id === selectedAssetId);
+    const asset = assets.find((a) => a.id === selectedAssetId);
     if (!asset) return;
 
-    completeOnboardingAllocation(assigningEmployee.id, selectedAssetId, remarks, "Support Engineer User");
-    toast.success(`Asset "${asset.name}" assigned to ${assigningEmployee.name}. Onboarding completed.`);
-    setAssigningEmployee(null);
+    try {
+      await completeOnboardingAllocation(
+        assigningEmployee.id,
+        selectedAssetId,
+        remarks || "Workspace hardware configured.",
+        "Support Engineer User"
+      );
+      toast.success(`Asset "${asset.name}" allocated to ${assigningEmployee.name}. Onboarding completed.`);
+      setAssigningEmployee(null);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to allocate asset");
+    }
   };
 
-  const pendingColumns: ColumnDef<Employee>[] = [
-    { accessorKey: "id", header: "Employee ID" },
-    { accessorKey: "name", header: "Name" },
-    { accessorKey: "department", header: "Department" },
-    { accessorKey: "requiredAssetCategory", header: "Assigned Category", cell: ({row}) => <span className="font-semibold text-primary">{row.original.requiredAssetCategory || "Laptop"}</span> },
-    { id: "schedule", header: "Scheduled Date & Time", cell: ({row}) => formatDateTime(row.original.allocationDate, row.original.allocationTime) },
-    { id: "status", header: "Status", cell: ({row}) => <StatusBadge status={row.original.allocationStatus ?? "Ready for Allocation"}/> },
-    { id: "actions", header: "", cell: ({row}) => (
-      <Button size="sm" onClick={() => handleOpenAssignDialog(row.original)}>
-        Assign Assets
-      </Button>
-    )},
-  ];
+  const columns: ColumnDef<Employee>[] = useMemo(
+    () => [
+      {
+        accessorKey: "id",
+        header: "Employee ID",
+        cell: ({ row }) => <span className="font-mono text-xs font-semibold">{row.original.id}</span>,
+      },
+      {
+        accessorKey: "name",
+        header: "Employee Name",
+        cell: ({ row }) => <span className="font-medium text-foreground">{row.original.name}</span>,
+      },
+      {
+        accessorKey: "department",
+        header: "Department",
+      },
+      {
+        accessorKey: "requiredAssetCategory",
+        header: "Required Hardware",
+        cell: ({ row }) => (
+          <span className="font-semibold text-primary">
+            {row.original.requiredAssetCategory || "Laptop"}
+          </span>
+        ),
+      },
+      {
+        accessorKey: "joinDate",
+        header: "Joining Date",
+      },
+      {
+        id: "verification",
+        header: "Verification",
+        cell: ({ row }) => {
+          const status = row.original.allocationStatus;
+          let label = "Pending Check";
+          let variant = "Awaiting Asset Verification";
+          if (status === "Ready for Allocation" || status === "Ready for Asset Allocation" || status === "Completed" || status === "Allocated") {
+            label = "Verified";
+            variant = "Completed";
+          } else if (status === "Waiting for Inventory" || status === "Out of Stock") {
+            label = "Out of Stock";
+            variant = "Waiting for Inventory";
+          }
+          return <StatusBadge status={variant} />;
+        },
+      },
+      {
+        id: "workflow",
+        header: "Workflow Status",
+        cell: ({ row }) => {
+          const raw = row.original.allocationStatus || "Awaiting Asset Verification";
+          let display = raw;
+          if (raw === "Ready for Asset Allocation") display = "Ready for Allocation";
+          if (raw === "Completed") display = "Allocated";
+          return <StatusBadge status={display} />;
+        },
+      },
+      {
+        id: "approvedBy",
+        header: "Approved By",
+        cell: ({ row }) => {
+          const { approvedBy } = getApprovalDetails(row.original);
+          return <span>{approvedBy}</span>;
+        },
+      },
+      {
+        id: "approvalDate",
+        header: "Approval Date",
+        cell: ({ row }) => {
+          const { approvalDate } = getApprovalDetails(row.original);
+          return <span className="text-xs text-muted-foreground">{approvalDate}</span>;
+        },
+      },
+      {
+        id: "actions",
+        header: "Actions",
+        cell: ({ row }) => {
+          const status = row.original.allocationStatus;
+          const isReady =
+            status === "Ready for Allocation" || status === "Ready for Asset Allocation";
 
-  const historyColumns: ColumnDef<Employee>[] = [
-    { accessorKey: "id", header: "Employee ID" },
-    { accessorKey: "name", header: "Name" },
-    { accessorKey: "department", header: "Department" },
-    { id: "assetName", header: "Assigned Hardware", cell: ({row}) => {
-      const details = row.original.allocatedAssetDetails;
-      if (!details) return <span className="text-muted-foreground">—</span>;
-      return (
-        <div>
-          <div className="font-semibold text-success">{details.assetName}</div>
-          <div className="font-mono text-xs text-muted-foreground">ID: {details.assetId} • S/N: {details.serialNumber}</div>
-        </div>
-      );
-    }},
-    { id: "assignedAt", header: "Assigned Date", cell: ({row}) => row.original.allocatedAssetDetails?.assignedAt || "Not set" },
-    { id: "assignedBy", header: "Assigned By", cell: ({row}) => row.original.allocatedAssetDetails?.assignedBy || "System" },
-    { id: "remarks", header: "Remarks", cell: ({row}) => <span className="text-muted-foreground italic truncate max-w-40 block">{row.original.allocatedAssetDetails?.remarks || "—"}</span> },
-  ];
+          if (isReady) {
+            return (
+              <Button size="sm" onClick={() => handleOpenAssignDialog(row.original)}>
+                Allocate Asset
+              </Button>
+            );
+          }
+          return <span className="text-muted-foreground text-xs italic">Awaiting steps</span>;
+        },
+      },
+    ],
+    [assets]
+  );
 
   return (
     <>
       <PageHeader
-        title="Asset Allocation Onboarding"
-        description="Assign approved hardware assets and configure employee workspaces."
+        title="Asset Onboarding Hub"
+        description="Verify stock hardware configurations and execute workspace setups."
       />
 
-      <Tabs defaultValue="pending">
-        <TabsList className="mb-4">
-          <TabsTrigger value="pending" className="relative">
-            Pending Onboardings
-            {dueAllocations.length > 0 && (
-              <span className="ml-1.5 px-1.5 py-0.5 text-[10px] font-bold bg-destructive text-destructive-foreground rounded-full leading-none">
-                {dueAllocations.length}
-              </span>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="history">
-            Allocation Onboarding History ({allocationHistory.length})
-          </TabsTrigger>
-        </TabsList>
+      <div className="space-y-4">
+        {/* Onboarding Tabs */}
+        <Tabs value={tab} onValueChange={setTab} className="w-full">
+          <TabsList className="grid grid-cols-3 md:flex md:w-auto h-auto p-1 bg-muted/60 gap-1 rounded-xl">
+            <TabsTrigger value="all" className="rounded-lg py-2 px-3 text-xs md:text-sm">
+              All ({onboardingEmployees.length})
+            </TabsTrigger>
+            <TabsTrigger value="pending_support" className="rounded-lg py-2 px-3 text-xs md:text-sm">
+              Pending IT Support
+            </TabsTrigger>
+            <TabsTrigger value="verified" className="rounded-lg py-2 px-3 text-xs md:text-sm">
+              Verified
+            </TabsTrigger>
+            <TabsTrigger value="pending_review" className="rounded-lg py-2 px-3 text-xs md:text-sm">
+              Pending AM Review
+            </TabsTrigger>
+            <TabsTrigger value="allocated" className="rounded-lg py-2 px-3 text-xs md:text-sm">
+              Allocated
+            </TabsTrigger>
+            <TabsTrigger value="out_of_stock" className="rounded-lg py-2 px-3 text-xs md:text-sm">
+              Out of Stock
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
 
-        <TabsContent value="pending">
-          <Card className="p-4">
+        {/* Filter Input Card */}
+        <Card className="p-4 rounded-xl border shadow-sm bg-card">
+          <div className="relative max-w-md">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search employee directory by name, ID or department..."
+              className="pl-8 h-9 text-sm"
+            />
+          </div>
+        </Card>
+
+        {/* Data Table */}
+        {filteredEmployees.length === 0 ? (
+          <Card className="p-12 text-center rounded-xl border">
+            <div className="flex flex-col items-center justify-center text-muted-foreground gap-3">
+              <Inbox className="h-12 w-12 text-muted-foreground/30" />
+              <p className="text-lg font-medium text-foreground">No onboardings in this filter</p>
+              <p className="text-sm">There are no onboarding profiles matching the criteria.</p>
+            </div>
+          </Card>
+        ) : (
+          <Card className="p-4 rounded-xl border shadow-sm bg-card overflow-hidden">
             <DataTable
-              data={dueAllocations}
-              columns={pendingColumns}
-              searchPlaceholder="Search pending allocations…"
-              pageSize={15}
+              data={filteredEmployees}
+              columns={columns}
+              searchPlaceholder="Refine current list results..."
+              pageSize={10}
             />
           </Card>
-        </TabsContent>
+        )}
+      </div>
 
-        <TabsContent value="history">
-          <Card className="p-4">
-            <DataTable
-              data={allocationHistory}
-              columns={historyColumns}
-              searchPlaceholder="Search assignment history…"
-              pageSize={15}
-            />
-          </Card>
-        </TabsContent>
-      </Tabs>
-
+      {/* Allocation Drawer Dialog */}
       <Dialog open={!!assigningEmployee} onOpenChange={(o) => !o && setAssigningEmployee(null)}>
         <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Laptop className="h-5 w-5 text-primary" /> Assign IT Assets
+              <Laptop className="h-5 w-5 text-primary" /> Assign Workspace Hardware
             </DialogTitle>
             <DialogDescription>
-              Assign available hardware assets to complete the workspace setup schedule.
+              Select from available stock units to dispatch hardware to the user workspace.
             </DialogDescription>
           </DialogHeader>
 
@@ -199,24 +341,33 @@ export default function AllocationOnboardingPage() {
                 </div>
                 <div>
                   <span className="text-xs text-muted-foreground block">Required hardware category</span>
-                  <span className="font-bold mt-0.5 block text-primary">{assigningEmployee.requiredAssetCategory || "Laptop"}</span>
+                  <span className="font-bold mt-0.5 block text-primary">
+                    {assigningEmployee.requiredAssetCategory || "Laptop"}
+                  </span>
                 </div>
                 <div>
-                  <span className="text-xs text-muted-foreground block">Location</span>
-                  <span className="font-medium text-foreground mt-0.5 block">{assigningEmployee.location}</span>
+                  <span className="text-xs text-muted-foreground block">Office Location</span>
+                  <span className="font-medium text-foreground mt-0.5 block">
+                    {assigningEmployee.location}
+                  </span>
                 </div>
               </div>
 
               <div className="space-y-3">
                 <div className="flex items-center justify-between flex-wrap gap-2">
-                  <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Select Hardware Asset</Label>
+                  <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    Available Stock List
+                  </Label>
                   <div className="flex items-center gap-2">
                     <Checkbox
                       id="loc-filter"
                       checked={filterByLocation}
                       onCheckedChange={(checked) => setFilterByLocation(!!checked)}
                     />
-                    <Label htmlFor="loc-filter" className="text-xs text-muted-foreground cursor-pointer select-none">
+                    <Label
+                      htmlFor="loc-filter"
+                      className="text-xs text-muted-foreground cursor-pointer select-none"
+                    >
                       Filter assets in {assigningEmployee.location}
                     </Label>
                   </div>
@@ -225,17 +376,18 @@ export default function AllocationOnboardingPage() {
                 <div className="relative">
                   <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
-                    placeholder="Search model, serial, category…"
+                    placeholder="Search stock by serial, brand, or model..."
                     className="pl-8 h-9 text-sm"
                     value={assetSearch}
-                    onChange={e => setAssetSearch(e.target.value)}
+                    onChange={(e) => setAssetSearch(e.target.value)}
                   />
                 </div>
 
                 <div className="border rounded-md max-h-[220px] overflow-y-auto divide-y bg-background scrollbar-thin">
                   {availableAssets.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground text-xs">
-                      No available {assigningEmployee.requiredAssetCategory || "Laptop"}s found in {filterByLocation ? assigningEmployee.location : "any location"}.
+                      No available {assigningEmployee.requiredAssetCategory || "Laptop"}s found in{" "}
+                      {filterByLocation ? assigningEmployee.location : "any location"}.
                       {filterByLocation && (
                         <button
                           type="button"
@@ -247,7 +399,7 @@ export default function AllocationOnboardingPage() {
                       )}
                     </div>
                   ) : (
-                    availableAssets.map(asset => {
+                    availableAssets.map((asset) => {
                       const selected = selectedAssetId === asset.id;
                       return (
                         <div
@@ -258,8 +410,12 @@ export default function AllocationOnboardingPage() {
                           }`}
                         >
                           <div className="min-w-0">
-                            <div className="text-xs font-bold text-muted-foreground uppercase">{asset.category}</div>
-                            <div className="text-sm font-semibold truncate text-foreground mt-0.5">{asset.name}</div>
+                            <div className="text-xs font-bold text-muted-foreground uppercase">
+                              {asset.category}
+                            </div>
+                            <div className="text-sm font-semibold truncate text-foreground mt-0.5">
+                              {asset.name}
+                            </div>
                             <div className="text-xs text-muted-foreground mt-0.5">
                               Model: {asset.model} • S/N: {asset.serial}
                             </div>
@@ -268,7 +424,9 @@ export default function AllocationOnboardingPage() {
                             <span className="text-xs font-mono bg-muted px-2 py-0.5 rounded text-muted-foreground border">
                               {asset.id}
                             </span>
-                            <span className="text-[10px] text-muted-foreground mt-0.5 block">{asset.location}</span>
+                            <span className="text-[10px] text-muted-foreground mt-0.5 block">
+                              {asset.location}
+                            </span>
                           </div>
                         </div>
                       );
@@ -278,19 +436,21 @@ export default function AllocationOnboardingPage() {
               </div>
 
               <div>
-                <Label className="text-xs font-semibold">Allocation Remarks</Label>
+                <Label className="text-xs font-semibold">Allocation Comments / Remarks</Label>
                 <Input
                   className="mt-1.5 text-sm"
-                  placeholder="e.g. Configured local networks, delivered device to user."
+                  placeholder="Notes (e.g. Configured employee profile, delivered device to user.)"
                   value={remarks}
-                  onChange={e => setRemarks(e.target.value)}
+                  onChange={(e) => setRemarks(e.target.value)}
                 />
               </div>
             </div>
           )}
 
           <DialogFooter className="border-t pt-3">
-            <Button variant="outline" onClick={() => setAssigningEmployee(null)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setAssigningEmployee(null)}>
+              Cancel
+            </Button>
             <Button onClick={handleConfirmAssignment} disabled={!selectedAssetId}>
               Confirm Allocation & Onboard <ArrowRight className="h-4 w-4 ml-1" />
             </Button>

@@ -1,10 +1,24 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Plus, Download, MoreHorizontal, Trash2, Eye, Edit } from "lucide-react";
+import {
+  Plus,
+  Download,
+  MoreHorizontal,
+  Trash2,
+  Eye,
+  Edit,
+  Inbox,
+  LayoutGrid,
+  Laptop,
+  CheckCircle,
+  Clock,
+  Wrench,
+  AlertTriangle,
+} from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { DataTable } from "@/components/common/DataTable";
 import { StatusBadge } from "@/components/common/StatusBadge";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -14,38 +28,26 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Asset } from "@/types/domain";
-import { uniqueValues } from "@/lib/live-data";
 import { useData } from "@/contexts/data";
 import { toast } from "sonner";
 
 export default function AssetsPage() {
-  const { assets, employees, addAsset, retireAsset } = useData();
-  console.log("Assets from Context:", assets);
-  console.log("Assets Length:", assets.length);
+  const { assets, employees, addAsset, retireAsset, refreshData } = useData();
+
   const CATEGORIES = [
-  "Laptop",
-  "Desktop",
-  "Monitor",
-  "Printer",
-  "Mobile",
-  "Keyboard",
-  "Mouse"
-];
+    "Laptop",
+    "Desktop",
+    "Monitor",
+    "Printer",
+    "Mobile",
+    "Keyboard",
+    "Mouse",
+  ];
 
-const MANUFACTURERS = [
-  "Dell",
-  "HP",
-  "Lenovo",
-  "Apple",
-  "Samsung"
-];
+  const MANUFACTURERS = ["Dell", "HP", "Lenovo", "Apple", "Samsung"];
 
-const LOCATIONS = [
-  "Hyderabad",
-  "Bangalore",
-  "Chennai",
-  "Mumbai"
-];
+  const LOCATIONS = ["Hyderabad", "Bangalore", "Chennai", "Mumbai"];
+
   const [selected, setSelected] = useState<Asset | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [category, setCategory] = useState("all");
@@ -57,6 +59,18 @@ const LOCATIONS = [
   const [serial, setSerial] = useState("");
   const [location, setLocation] = useState("");
 
+  useEffect(() => {
+    refreshData();
+  }, []);
+
+  // Stats calculation
+  const totalCount = assets.length;
+  const assignedCount = assets.filter((a) => a.status === "Assigned").length;
+  const availableCount = assets.filter((a) => a.status === "Available").length;
+  const maintenanceCount = assets.filter((a) => a.status === "Maintenance").length;
+  // Out of Stock represents the number of onboarding employees blocked on inventory
+  const outOfStockCount = employees.filter((e) => e.allocationStatus === "Waiting for Inventory").length;
+
   const handleOpenCreate = () => {
     setName("");
     setAssetCategory("");
@@ -66,136 +80,321 @@ const LOCATIONS = [
     setCreateOpen(true);
   };
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     if (!name.trim() || !assetCategory || !manufacturer || !serial.trim() || !location) {
       toast.error("Please fill in all fields");
       return;
     }
 
-    addAsset({
-      name: name.trim(),
-      category: assetCategory,
-      manufacturer,
-      model: `${manufacturer.slice(0, 2).toUpperCase()}-${Math.floor(Math.random() * 9000 + 1000)}`,
-      serial: serial.trim().toUpperCase(),
-      location,
-      assignedTo: null,
-      status: "Available",
-      purchaseDate: new Date().toISOString().slice(0, 10),
-      warrantyExpiry: new Date(new Date().setFullYear(new Date().getFullYear() + 2)).toISOString().slice(0, 10),
-      cost: Math.floor(Math.random() * 2500) + 500,
-    });
+    try {
+      await addAsset({
+        name: name.trim(),
+        category: assetCategory,
+        manufacturer,
+        model: `${manufacturer.slice(0, 2).toUpperCase()}-${Math.floor(Math.random() * 9000 + 1000)}`,
+        serial: serial.trim().toUpperCase(),
+        location,
+        assignedTo: null,
+        status: "Available",
+        purchaseDate: new Date().toISOString().slice(0, 10),
+        warrantyExpiry: new Date(new Date().setFullYear(new Date().getFullYear() + 2)).toISOString().slice(0, 10),
+        cost: Math.floor(Math.random() * 2500) + 500,
+      });
 
-    toast.success("Asset created successfully");
-    setCreateOpen(false);
+      toast.success("Asset created successfully");
+      setCreateOpen(false);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to create asset");
+    }
   };
 
   const filtered = useMemo(() => {
-    return assets.filter(a =>
-        (category === "all" || a.category === category) &&
-        (status === "all" || a.status === status)
+    return assets.filter(
+      (a) =>
+        (category === "all" || a.category === category) && (status === "all" || a.status === status)
     );
-}, [assets, category, status]);
+  }, [assets, category, status]);
 
-console.log("Filtered Assets:", filtered);
-console.log("Filtered Length:", filtered.length);
-console.log("First Asset:", assets[0]);
-
-  const columns: ColumnDef<Asset>[] = [
-    { accessorKey: "id", header: "Asset ID" },
-    { accessorKey: "name", header: "Name" },
-    { accessorKey: "category", header: "Category" },
-    { accessorKey: "manufacturer", header: "Manufacturer" },
-    { accessorKey: "serial", header: "Serial" },
-    { accessorKey: "warrantyExpiry", header: "Warranty" },
-    { accessorKey: "location", header: "Location" },
-    { id: "assignedTo", header: "Assigned", cell: ({row}) => row.original.assignedTo ? (employees.find(e => e.id === row.original.assignedTo)?.name || row.original.assignedTo) : <span className="text-muted-foreground">Unassigned</span> },
-    { id: "status", header: "Status", cell: ({row}) => <StatusBadge status={row.original.status}/> },
-    { id: "actions", header: "", cell: ({row}) => (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={e => e.stopPropagation()}><MoreHorizontal className="h-4 w-4"/></Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={() => setSelected(row.original)}><Eye className="h-4 w-4 mr-2"/>View</DropdownMenuItem>
-          <DropdownMenuItem onClick={() => toast.info("Edit not wired in demo")}><Edit className="h-4 w-4 mr-2"/>Edit</DropdownMenuItem>
-          <DropdownMenuItem className="text-destructive" onClick={() => { retireAsset(row.original.id); toast.success("Asset retired"); }}><Trash2 className="h-4 w-4 mr-2"/>Retire</DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    )},
-  ];
+  const columns: ColumnDef<Asset>[] = useMemo(
+    () => [
+      {
+        accessorKey: "id",
+        header: "Asset ID",
+        cell: ({ row }) => <span className="font-mono text-xs font-semibold">{row.original.id}</span>,
+      },
+      {
+        accessorKey: "name",
+        header: "Name",
+        cell: ({ row }) => <span className="font-medium text-foreground">{row.original.name}</span>,
+      },
+      {
+        accessorKey: "category",
+        header: "Category",
+        cell: ({ row }) => <span className="font-semibold text-primary">{row.original.category}</span>,
+      },
+      {
+        accessorKey: "manufacturer",
+        header: "Manufacturer",
+      },
+      {
+        accessorKey: "serial",
+        header: "Serial",
+        cell: ({ row }) => <span className="font-mono text-xs">{row.original.serial}</span>,
+      },
+      {
+        accessorKey: "warrantyExpiry",
+        header: "Warranty",
+        cell: ({ row }) => <span className="text-xs text-muted-foreground">{row.original.warrantyExpiry || "N/A"}</span>,
+      },
+      {
+        accessorKey: "location",
+        header: "Location",
+      },
+      {
+        id: "assignedTo",
+        header: "Assigned",
+        cell: ({ row }) =>
+          row.original.assignedTo ? (
+            <span className="font-medium text-foreground">
+              {employees.find((e) => e.id === row.original.assignedTo)?.name || row.original.assignedTo}
+            </span>
+          ) : (
+            <span className="text-muted-foreground italic">Unassigned</span>
+          ),
+      },
+      {
+        id: "status",
+        header: "Status",
+        cell: ({ row }) => <StatusBadge status={row.original.status} />,
+      },
+      {
+        id: "actions",
+        header: "Actions",
+        cell: ({ row }) => (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => e.stopPropagation()}>
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setSelected(row.original)}>
+                <Eye className="h-4 w-4 mr-2" /> View Details
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => toast.info("Edit not wired in demo")}>
+                <Edit className="h-4 w-4 mr-2" /> Edit Asset
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="text-destructive"
+                onClick={async () => {
+                  try {
+                    await retireAsset(row.original.id);
+                    toast.success("Asset retired from service");
+                  } catch (err: any) {
+                    toast.error(err.message || "Failed to retire asset");
+                  }
+                }}
+              >
+                <Trash2 className="h-4 w-4 mr-2" /> Retire Asset
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ),
+      },
+    ],
+    [employees]
+  );
 
   return (
     <>
       <PageHeader
-        title="Assets"
+        title="Assets Management"
         description={`Manage ${assets.length.toLocaleString()} enterprise assets across all locations.`}
         actions={
-          <>
-            <Button variant="outline" onClick={() => toast.success("Export queued (demo)")}><Download className="h-4 w-4 mr-1"/>Export</Button>
-            <Button onClick={handleOpenCreate}><Plus className="h-4 w-4 mr-1"/>Add Asset</Button>
-          </>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => toast.success("Export queued (demo)")}>
+              <Download className="h-4 w-4 mr-1" /> Export
+            </Button>
+            <Button onClick={handleOpenCreate}>
+              <Plus className="h-4 w-4 mr-1" /> Add Asset
+            </Button>
+          </div>
         }
       />
-      <Card className="p-4 mb-4">
-        <div className="flex flex-wrap gap-3">
-          <div className="min-w-40">
-            <Label className="text-xs">Category</Label>
+
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+        <Card className="rounded-xl border shadow-sm bg-card">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Total Assets
+            </CardTitle>
+            <LayoutGrid className="h-4 w-4 text-blue-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{totalCount}</div>
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-xl border shadow-sm bg-card">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Assigned
+            </CardTitle>
+            <Laptop className="h-4 w-4 text-indigo-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{assignedCount}</div>
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-xl border shadow-sm bg-card">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Available
+            </CardTitle>
+            <CheckCircle className="h-4 w-4 text-green-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{availableCount}</div>
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-xl border shadow-sm bg-card">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Maintenance
+            </CardTitle>
+            <Wrench className="h-4 w-4 text-orange-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{maintenanceCount}</div>
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-xl border shadow-sm bg-card">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Out of Stock
+            </CardTitle>
+            <AlertTriangle className="h-4 w-4 text-red-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{outOfStockCount}</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Filter Options */}
+      <Card className="p-4 mb-4 rounded-xl border shadow-sm bg-card">
+        <div className="flex flex-wrap gap-4 items-center">
+          <div className="min-w-40 flex-1 sm:flex-initial">
+            <Label className="text-xs font-medium mb-1.5 block">Category Filter</Label>
             <Select value={category} onValueChange={setCategory}>
-              <SelectTrigger className="mt-1 h-9"><SelectValue/></SelectTrigger>
+              <SelectTrigger className="h-9 bg-background">
+                <SelectValue placeholder="Select Category" />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Categories</SelectItem>
-                {CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                {CATEGORIES.map((c) => (
+                  <SelectItem key={c} value={c}>
+                    {c}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
-          <div className="min-w-40">
-            <Label className="text-xs">Status</Label>
-            <Tabs value={status} onValueChange={setStatus} className="mt-1">
-              <TabsList>
-                <TabsTrigger value="all">All</TabsTrigger>
-                <TabsTrigger value="Assigned">Assigned</TabsTrigger>
-                <TabsTrigger value="Available">Available</TabsTrigger>
-                <TabsTrigger value="Maintenance">Maintenance</TabsTrigger>
-                <TabsTrigger value="Retired">Retired</TabsTrigger>
+          <div className="min-w-40 flex-1 sm:flex-initial">
+            <Label className="text-xs font-medium mb-1.5 block">Status Tab</Label>
+            <Tabs value={status} onValueChange={setStatus} className="w-full">
+              <TabsList className="h-9 rounded-lg p-0.5 bg-muted">
+                <TabsTrigger value="all" className="text-xs px-2.5 py-1">All</TabsTrigger>
+                <TabsTrigger value="Assigned" className="text-xs px-2.5 py-1">Assigned</TabsTrigger>
+                <TabsTrigger value="Available" className="text-xs px-2.5 py-1">Available</TabsTrigger>
+                <TabsTrigger value="Maintenance" className="text-xs px-2.5 py-1">Maintenance</TabsTrigger>
+                <TabsTrigger value="Retired" className="text-xs px-2.5 py-1">Retired</TabsTrigger>
               </TabsList>
             </Tabs>
           </div>
         </div>
       </Card>
-      <Card className="p-4">
-        <DataTable data={filtered} columns={columns} searchPlaceholder="Search by ID, name, serial…" onRowClick={setSelected} pageSize={15}/>
-      </Card>
 
+      {/* Asset Table */}
+      {filtered.length === 0 ? (
+        <Card className="p-12 text-center rounded-xl border">
+          <div className="flex flex-col items-center justify-center text-muted-foreground gap-3">
+            <Inbox className="h-12 w-12 text-muted-foreground/30" />
+            <p className="text-lg font-medium text-foreground">No assets found</p>
+            <p className="text-sm">There are no hardware assets in stock matching the filters.</p>
+          </div>
+        </Card>
+      ) : (
+        <Card className="p-4 rounded-xl border shadow-sm bg-card overflow-hidden">
+          <DataTable
+            data={filtered}
+            columns={columns}
+            searchPlaceholder="Search assets by ID, name, manufacturer, serial..."
+            onRowClick={setSelected}
+            pageSize={15}
+          />
+        </Card>
+      )}
+
+      {/* Detail Sheet */}
       <Sheet open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
-        <SheetContent className="w-full sm:max-w-xl overflow-y-auto p-6">
+        <SheetContent className="w-full sm:max-w-xl overflow-y-auto p-6 bg-background">
           {selected && (
             <>
-              <SheetHeader className="p-0 mb-4">
-                <div className="text-xs text-muted-foreground">{selected.id}</div>
-                <SheetTitle className="text-xl">{selected.name}</SheetTitle>
-                <div className="mt-2"><StatusBadge status={selected.status}/></div>
+              <SheetHeader className="p-0 mb-4 border-b pb-4 gap-1">
+                <div className="text-xs font-mono text-muted-foreground">{selected.id}</div>
+                <SheetTitle className="text-xl font-bold">{selected.name}</SheetTitle>
+                <div className="mt-2">
+                  <StatusBadge status={selected.status} />
+                </div>
               </SheetHeader>
+
               <div className="space-y-4">
-                <Card className="p-4">
-                  <div className="font-semibold text-sm mb-3">Details</div>
-                  <div className="grid grid-cols-2 gap-y-2 text-sm">
-                    <span className="text-muted-foreground">Category</span><span>{selected.category}</span>
-                    <span className="text-muted-foreground">Manufacturer</span><span>{selected.manufacturer}</span>
-                    <span className="text-muted-foreground">Model</span><span>{selected.model}</span>
-                    <span className="text-muted-foreground">Serial</span><span>{selected.serial}</span>
-                    <span className="text-muted-foreground">Purchase Date</span><span>{selected.purchaseDate}</span>
-                    <span className="text-muted-foreground">Warranty Expiry</span><span>{selected.warrantyExpiry}</span>
-                    <span className="text-muted-foreground">Location</span><span>{selected.location}</span>
-                    <span className="text-muted-foreground">Cost</span><span>${selected.cost.toLocaleString()}</span>
-                    <span className="text-muted-foreground">Assigned</span>
-                    <span>{selected.assignedTo ? (employees.find(e => e.id === selected.assignedTo)?.name || selected.assignedTo) : "Unassigned"}</span>
+                <Card className="p-4 rounded-xl border">
+                  <div className="font-semibold text-sm mb-3">Asset Properties</div>
+                  <div className="grid grid-cols-2 gap-y-2.5 text-sm">
+                    <span className="text-muted-foreground">Category</span>
+                    <span className="font-semibold text-primary">{selected.category}</span>
+                    
+                    <span className="text-muted-foreground">Manufacturer</span>
+                    <span className="font-medium">{selected.manufacturer}</span>
+                    
+                    <span className="text-muted-foreground">Model</span>
+                    <span className="font-medium">{selected.model}</span>
+                    
+                    <span className="text-muted-foreground">Serial Number</span>
+                    <span className="font-mono text-xs">{selected.serial}</span>
+                    
+                    <span className="text-muted-foreground">Purchase Date</span>
+                    <span>{selected.purchaseDate}</span>
+                    
+                    <span className="text-muted-foreground">Warranty Expiry</span>
+                    <span>{selected.warrantyExpiry || "N/A"}</span>
+                    
+                    <span className="text-muted-foreground">Location</span>
+                    <span>{selected.location}</span>
+                    
+                    <span className="text-muted-foreground">Cost Value</span>
+                    <span className="font-semibold">${selected.cost.toLocaleString()}</span>
+                    
+                    <span className="text-muted-foreground">Custodian / Assigned Employee</span>
+                    <span className="font-semibold text-foreground">
+                      {selected.assignedTo
+                        ? employees.find((e) => e.id === selected.assignedTo)?.name || selected.assignedTo
+                        : "Unassigned"}
+                    </span>
                   </div>
                 </Card>
-                <Card className="p-4">
-                  <div className="font-semibold text-sm mb-3">Assignment History</div>
-                  <div className="text-sm text-muted-foreground">
-                    Previously assigned to 3 employees. Currently held for {selected.assignedTo ? "active use" : "reallocation"}.
+
+                <Card className="p-4 rounded-xl border">
+                  <div className="font-semibold text-sm mb-2">Workspace Ownership Log</div>
+                  <div className="text-xs text-muted-foreground leading-relaxed">
+                    This {selected.category} device is verified in {selected.location}. Currently held
+                    for {selected.assignedTo ? "active employment use" : "onboarding reallocation"}.
                   </div>
                 </Card>
               </div>
@@ -204,44 +403,88 @@ console.log("First Asset:", assets[0]);
         </SheetContent>
       </Sheet>
 
+      {/* Add Asset Dialog */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Add New Asset</DialogTitle></DialogHeader>
-          <div className="grid gap-3">
+        <DialogContent className="sm:max-w-[480px]">
+          <DialogHeader>
+            <DialogTitle>Add New Inventory Asset</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-3 py-2">
             <div>
-              <Label>Name</Label>
-              <Input className="mt-1.5" placeholder="Dell Latitude 5540" value={name} onChange={e => setName(e.target.value)}/>
+              <Label htmlFor="asset-name" className="text-xs font-semibold">Asset Name</Label>
+              <Input
+                id="asset-name"
+                className="mt-1.5 text-sm h-9"
+                placeholder="Dell Latitude 5540"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div><Label>Category</Label>
+              <div>
+                <Label htmlFor="category-select" className="text-xs font-semibold">Category</Label>
                 <Select value={assetCategory} onValueChange={setAssetCategory}>
-                  <SelectTrigger className="mt-1.5"><SelectValue placeholder="Select"/></SelectTrigger>
-                  <SelectContent>{CATEGORIES.map(c=><SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                  <SelectTrigger id="category-select" className="mt-1.5 h-9">
+                    <SelectValue placeholder="Select" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CATEGORIES.map((c) => (
+                      <SelectItem key={c} value={c}>
+                        {c}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
                 </Select>
               </div>
-              <div><Label>Manufacturer</Label>
+              <div>
+                <Label htmlFor="brand-select" className="text-xs font-semibold">Manufacturer</Label>
                 <Select value={manufacturer} onValueChange={setManufacturer}>
-                  <SelectTrigger className="mt-1.5"><SelectValue placeholder="Select"/></SelectTrigger>
-                  <SelectContent>{MANUFACTURERS.map(m=><SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
+                  <SelectTrigger id="brand-select" className="mt-1.5 h-9">
+                    <SelectValue placeholder="Select" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {MANUFACTURERS.map((m) => (
+                      <SelectItem key={m} value={m}>
+                        {m}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
                 </Select>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label>Serial Number</Label>
-                <Input className="mt-1.5" placeholder="SN…" value={serial} onChange={e => setSerial(e.target.value)}/>
+                <Label htmlFor="serial-input" className="text-xs font-semibold">Serial Number</Label>
+                <Input
+                  id="serial-input"
+                  className="mt-1.5 text-sm h-9"
+                  placeholder="S/N..."
+                  value={serial}
+                  onChange={(e) => setSerial(e.target.value)}
+                />
               </div>
-              <div><Label>Location</Label>
+              <div>
+                <Label htmlFor="loc-select" className="text-xs font-semibold">Location</Label>
                 <Select value={location} onValueChange={setLocation}>
-                  <SelectTrigger className="mt-1.5"><SelectValue placeholder="Select"/></SelectTrigger>
-                  <SelectContent>{LOCATIONS.map(l=><SelectItem key={l} value={l}>{l}</SelectItem>)}</SelectContent>
+                  <SelectTrigger id="loc-select" className="mt-1.5 h-9">
+                    <SelectValue placeholder="Select" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {LOCATIONS.map((l) => (
+                      <SelectItem key={l} value={l}>
+                        {l}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
                 </Select>
               </div>
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
-            <Button onClick={handleCreate}>Create</Button>
+          <DialogFooter className="border-t pt-3">
+            <Button variant="outline" onClick={() => setCreateOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleCreate}>Create Asset</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

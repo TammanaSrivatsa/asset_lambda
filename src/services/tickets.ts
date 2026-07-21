@@ -109,10 +109,12 @@
   }
 
   export async function fetchTickets(role?: string): Promise<{ tickets: Ticket[]; total: number }> {
+    console.log("Current Role:", role);
     const endpoint =
-      role === "IT_SUPPORT"
+      role === "support"
         ? "/tickets"
         : "/employee/tickets";
+    console.log("Calling endpoint:", endpoint);
 
     const data = await apiFetch<{ success: boolean; tickets: any[] }>(endpoint);
     const tickets = (data.tickets || []).map((t: any) => ({
@@ -182,9 +184,11 @@
     comment?: string,
   ): Promise<Ticket> {
     const endpoint =
-      role === "IT_SUPPORT"
+      role === "support"
         ? `/tickets/${ticketId}`
         : `/employee/tickets/${ticketId}`;
+    console.log("Update Ticket Role:", role);
+console.log("Update Endpoint:", endpoint);
 
     const response = await apiFetch<any>(endpoint, {
       method: "PUT",
