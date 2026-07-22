@@ -3,7 +3,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { PageHeader } from "@/components/common/PageHeader";
 import { DataTable } from "@/components/common/DataTable";
 import { StatusBadge } from "@/components/common/StatusBadge";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -14,6 +14,8 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -24,7 +26,18 @@ import {
 import type { Assignment, Asset, Employee } from "@/types/domain";
 import { useData } from "@/contexts/data";
 import { toast } from "sonner";
-import { ArrowLeftRight, RotateCcw, Plus, Inbox, ShieldAlert } from "lucide-react";
+import {
+  ArrowLeftRight,
+  RotateCcw,
+  Plus,
+  Inbox,
+  Search,
+  User,
+  Laptop,
+  CheckCircle,
+  FileText,
+  Clock,
+} from "lucide-react";
 import {
   updateAssignment,
   deleteAssignment,
@@ -37,6 +50,9 @@ export default function AssignmentsPage() {
   const [selectedEmployeeId, setSelectedEmployeeId] = useState("");
   const [selectedAssetId, setSelectedAssetId] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
 
   useEffect(() => {
     refreshData();
@@ -70,6 +86,41 @@ export default function AssignmentsPage() {
     }
   };
 
+  // Live Stats calculations
+  const totalCount = assignments.length;
+  const activeCount = assignments.filter((asg) => asg.status === "ACTIVE").length;
+  const returnedCount = assignments.filter((asg) => asg.status === "RETURNED").length;
+
+  const filteredAssignments = useMemo(() => {
+    let list = assignments;
+
+    // Apply status filter
+    if (statusFilter !== "all") {
+      list = list.filter((asg) => asg.status.toLowerCase() === statusFilter.toLowerCase());
+    }
+
+    // Apply global text search
+    if (searchQuery.trim() !== "") {
+      const q = searchQuery.toLowerCase();
+      list = list.filter((asg) => {
+        const emp = employees.find((e) => e.id === asg.employeeId);
+        const asset = assets.find((a) => a.id === asg.assetId);
+
+        return (
+          asg.assignmentId.toLowerCase().includes(q) ||
+          asg.employeeId.toLowerCase().includes(q) ||
+          asg.assetId.toLowerCase().includes(q) ||
+          (emp && emp.name.toLowerCase().includes(q)) ||
+          (emp && emp.department.toLowerCase().includes(q)) ||
+          (asset && asset.name.toLowerCase().includes(q)) ||
+          (asset && asset.serial.toLowerCase().includes(q))
+        );
+      });
+    }
+
+    return list;
+  }, [assignments, searchQuery, statusFilter, employees, assets]);
+
   const columns = useMemo<ColumnDef<Assignment>[]>(
     () => [
       {
@@ -78,29 +129,47 @@ export default function AssignmentsPage() {
         cell: ({ row }) => <span className="font-mono text-xs font-semibold">{row.original.assignmentId}</span>,
       },
       {
-        accessorKey: "employeeId",
-        header: "Employee ID",
-        cell: ({ row }) => <span className="font-mono text-xs font-semibold">{row.original.employeeId}</span>,
-      },
-      {
-        id: "employeeName",
-        header: "Employee Name",
+        id: "employeeDetails",
+        header: "Employee Details",
         cell: ({ row }) => {
           const emp = employees.find((e) => e.id === row.original.employeeId);
-          return <span className="font-medium text-foreground">{emp ? emp.name : row.original.employeeId}</span>;
+          return (
+            <div className="flex items-center gap-2">
+              <div className="h-7 w-7 rounded-full bg-indigo-500/10 text-indigo-600 flex items-center justify-center text-[10px] font-bold shrink-0">
+                {emp ? emp.name.split(" ").map(n => n[0]).join("").slice(0,2) : "EM"}
+              </div>
+              <div>
+                <span className="font-medium text-foreground block leading-tight">
+                  {emp ? emp.name : row.original.employeeId}
+                </span>
+                <span className="text-[10px] text-muted-foreground font-mono">
+                  {row.original.employeeId} {emp?.department ? `• ${emp.department}` : ""}
+                </span>
+              </div>
+            </div>
+          );
         },
       },
       {
-        accessorKey: "assetId",
-        header: "Asset ID",
-        cell: ({ row }) => <span className="font-mono text-xs font-semibold">{row.original.assetId}</span>,
-      },
-      {
-        id: "assetName",
-        header: "Asset Name",
+        id: "assetDetails",
+        header: "Asset Details",
         cell: ({ row }) => {
           const asset = assets.find((a) => a.id === row.original.assetId);
-          return <span className="font-medium text-foreground">{asset ? asset.name : row.original.assetId}</span>;
+          return (
+            <div className="flex items-center gap-2">
+              <div className="h-7 w-7 rounded bg-emerald-500/10 text-emerald-600 flex items-center justify-center shrink-0">
+                <Laptop className="h-4 w-4" />
+              </div>
+              <div>
+                <span className="font-medium text-foreground block leading-tight">
+                  {asset ? asset.name : row.original.assetId}
+                </span>
+                <span className="text-[10px] text-muted-foreground font-mono">
+                  {row.original.assetId} {asset?.serial ? `• Serial: ${asset.serial}` : ""}
+                </span>
+              </div>
+            </div>
+          );
         },
       },
       {
@@ -109,14 +178,6 @@ export default function AssignmentsPage() {
         cell: ({ row }) => {
           const asset = assets.find((a) => a.id === row.original.assetId);
           return <span className="font-semibold text-primary">{asset ? asset.category : "Laptop"}</span>;
-        },
-      },
-      {
-        id: "department",
-        header: "Department",
-        cell: ({ row }) => {
-          const emp = employees.find((e) => e.id === row.original.employeeId);
-          return <span>{emp ? emp.department : "—"}</span>;
         },
       },
       {
@@ -149,18 +210,6 @@ export default function AssignmentsPage() {
         },
       },
       {
-        id: "comment",
-        header: "IT Comment",
-        cell: ({ row }) => {
-          const emp = employees.find((e) => e.id === row.original.employeeId);
-          return (
-            <span className="text-xs text-muted-foreground italic truncate max-w-[150px] block">
-              {emp?.allocatedAssetDetails?.remarks || "Onboarding asset configured."}
-            </span>
-          );
-        },
-      },
-      {
         id: "actions",
         header: "Actions",
         cell: ({ row }) => {
@@ -172,6 +221,7 @@ export default function AssignmentsPage() {
                   size="sm"
                   variant="outline"
                   title="Return Asset"
+                  className="h-7 px-2 text-xs"
                   onClick={async (e) => {
                     e.stopPropagation();
                     try {
@@ -183,14 +233,14 @@ export default function AssignmentsPage() {
                     }
                   }}
                 >
-                  <RotateCcw className="h-3.5 w-3.5 mr-1" /> Return
+                  <RotateCcw className="h-3 w-3 mr-1" /> Return
                 </Button>
               )}
 
               <Button
                 size="sm"
                 variant="ghost"
-                className="text-destructive hover:bg-destructive/10"
+                className="h-7 px-2 text-xs text-destructive hover:bg-destructive/10"
                 title="Decommission Assignment"
                 onClick={async (e) => {
                   e.stopPropagation();
@@ -203,7 +253,7 @@ export default function AssignmentsPage() {
                   }
                 }}
               >
-                <ArrowLeftRight className="h-3.5 w-3.5 mr-1" /> Decom
+                <ArrowLeftRight className="h-3 w-3 mr-1" /> Decom
               </Button>
             </div>
           );
@@ -217,28 +267,94 @@ export default function AssignmentsPage() {
     <>
       <PageHeader
         title="Asset Assignments"
-        description="Assign, return, and transfer active assets across organization units."
+        description="Deploy hardware, manage returns, and tracking assignments history."
         actions={
-          <Button onClick={() => setCreateOpen(true)}>
-            <Plus className="h-4 w-4 mr-1" /> New Assignment
+          <Button size="sm" onClick={() => setCreateOpen(true)}>
+            <Plus className="h-4 w-4 mr-1.5" /> New Assignment
           </Button>
         }
       />
 
-      {assignments.length === 0 ? (
+      {/* KPI Stats cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+        <Card className="rounded-xl border shadow-sm bg-card">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Total Operations
+            </CardTitle>
+            <FileText className="h-4 w-4 text-blue-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{totalCount}</div>
+            <p className="text-[10px] text-muted-foreground mt-1">Total assignment dispatches on record</p>
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-xl border shadow-sm bg-card">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Active Assignments
+            </CardTitle>
+            <Clock className="h-4 w-4 text-indigo-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">{activeCount}</div>
+            <p className="text-[10px] text-muted-foreground mt-1">Devices currently in employee custody</p>
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-xl border shadow-sm bg-card">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Returned Safely
+            </CardTitle>
+            <CheckCircle className="h-4 w-4 text-green-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-500">{returnedCount}</div>
+            <p className="text-[10px] text-muted-foreground mt-1">Assignments safely closed & retired</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Assignments Control bar */}
+      <Card className="p-4 mb-4 rounded-xl border shadow-sm bg-card">
+        <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
+          <div className="relative w-full sm:max-w-md">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search assignments by ID, employee, asset, serial..."
+              className="pl-8 h-9 text-sm bg-background"
+            />
+          </div>
+
+          <Tabs value={statusFilter} onValueChange={setStatusFilter} className="w-full sm:w-auto">
+            <TabsList className="h-9 rounded-lg p-0.5 bg-muted/60 w-full sm:w-auto">
+              <TabsTrigger value="all" className="text-xs px-3 py-1">All</TabsTrigger>
+              <TabsTrigger value="ACTIVE" className="text-xs px-3 py-1">Active</TabsTrigger>
+              <TabsTrigger value="RETURNED" className="text-xs px-3 py-1">Returned</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
+      </Card>
+
+      {/* Assignments Table */}
+      {filteredAssignments.length === 0 ? (
         <Card className="p-12 text-center rounded-xl border">
           <div className="flex flex-col items-center justify-center text-muted-foreground gap-3">
             <Inbox className="h-12 w-12 text-muted-foreground/30" />
-            <p className="text-lg font-medium text-foreground">No active assignments</p>
-            <p className="text-sm">There are no hardware devices currently dispatched to employees.</p>
+            <p className="text-lg font-medium text-foreground">No assignments found</p>
+            <p className="text-sm">There are no hardware devices matching the search criteria.</p>
           </div>
         </Card>
       ) : (
         <Card className="p-4 rounded-xl border shadow-sm bg-card overflow-hidden">
           <DataTable
-            data={assignments}
+            data={filteredAssignments}
             columns={columns}
-            searchPlaceholder="Search assignment records by employee ID, asset ID..."
+            searchPlaceholder="Filter assignments..."
             pageSize={15}
           />
         </Card>

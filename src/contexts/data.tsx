@@ -115,9 +115,9 @@ const mappedAssets = apiAssets.map((a: any) => ({
     model: a.model,
     serial: a.serialNumber,
     purchaseDate: a.purchaseDate,
-    warrantyExpiry: "",
+    warrantyExpiry: a.warrantyExpiry || a.warranty_expiry || "",
     cost: Number(a.purchasePrice || 0),
-    location: "",
+    location: a.location || a.officeLocation || "",
     assignedTo: a.assignedTo || null,
     status:
         a.status === "AVAILABLE"

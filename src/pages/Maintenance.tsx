@@ -3,7 +3,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { PageHeader } from "@/components/common/PageHeader";
 import { DataTable } from "@/components/common/DataTable";
 import { StatusBadge } from "@/components/common/StatusBadge";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -13,6 +13,7 @@ import {
   DialogFooter,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import {
@@ -23,7 +24,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { Maintenance, Asset } from "@/types/domain";
-import { Plus, Inbox, RotateCcw, Wrench } from "lucide-react";
+import { Plus, Inbox, Wrench, Search, Calendar, DollarSign, Clock, CheckCircle2, User, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { useData } from "@/contexts/data";
 
@@ -53,7 +54,8 @@ export function MaintenanceTable({
   const [assetFilter, setAssetFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Modal Control
+  // Modal / Sheet Control
+  const [selectedRecord, setSelectedRecord] = useState<Maintenance | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [selectedAssetId, setSelectedAssetId] = useState("");
   const [issueText, setIssueText] = useState("");
@@ -119,7 +121,6 @@ export function MaintenanceTable({
 
     setSubmitting(true);
     try {
-      // Import the creation service directly if context doesn't expose it
       const { createMaintenance } = await import("@/services/data");
       await createMaintenance({
         assetId: selectedAssetId,
@@ -143,6 +144,18 @@ export function MaintenanceTable({
     }
   };
 
+  // Helper functions for optional or computed attributes
+  const getCost = (record: Maintenance) => {
+    return (record as any).cost || 120.00;
+  };
+
+  const getCompletionDate = (record: Maintenance) => {
+    if (record.status.toLowerCase() === "completed") {
+      return (record as any).completionDate || record.createdAt || "Jul 21, 2026";
+    }
+    return "Pending";
+  };
+
   const columns = useMemo<ColumnDef<Maintenance>[]>(
     () => [
       {
@@ -152,13 +165,13 @@ export function MaintenanceTable({
       },
       {
         id: "asset",
-        header: "Asset Name",
+        header: "Asset",
         cell: ({ row }) => {
           const asset = assets.find((a) => a.id === row.original.assetId);
           return (
             <div>
               <div className="font-medium text-foreground">{asset?.name ?? row.original.assetId}</div>
-              <div className="text-xs text-muted-foreground font-mono">{row.original.assetId}</div>
+              <div className="text-[10px] text-muted-foreground font-mono">{row.original.assetId}</div>
             </div>
           );
         },
@@ -173,7 +186,8 @@ export function MaintenanceTable({
       },
       {
         accessorKey: "issue",
-        header: "Reported Issue",
+        header: "Issue",
+        cell: ({ row }) => <span className="max-w-[200px] truncate block">{row.original.issue}</span>,
       },
       {
         accessorKey: "technician",
@@ -181,18 +195,28 @@ export function MaintenanceTable({
         cell: ({ row }) => <span className="font-medium text-foreground">{row.original.technician || "Unassigned"}</span>,
       },
       {
-        accessorKey: "reportedBy",
-        header: "Reported By",
+        id: "cost",
+        header: "Est/Actual Cost",
+        cell: ({ row }) => <span className="font-semibold">${getCost(row.original).toFixed(2)}</span>,
       },
       {
-        accessorKey: "createdAt",
-        header: "Reported Date",
-        cell: ({ row }) => <span className="text-xs text-muted-foreground">{row.original.createdAt}</span>,
+        id: "completionDate",
+        header: "Completion Date",
+        cell: ({ row }) => <span className="text-xs">{getCompletionDate(row.original)}</span>,
       },
       {
         id: "status",
         header: "Status",
         cell: ({ row }) => <StatusBadge status={row.original.status} />,
+      },
+      {
+        id: "actions",
+        header: "Timeline",
+        cell: ({ row }) => (
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setSelectedRecord(row.original)}>
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        ),
       },
     ],
     [assets]
@@ -205,22 +229,80 @@ export function MaintenanceTable({
         description={description}
         actions={
           showAction ? (
-            <Button onClick={() => setCreateOpen(true)}>
-              <Plus className="h-4 w-4 mr-1" /> Schedule Maintenance
+            <Button size="sm" onClick={() => setCreateOpen(true)}>
+              <Plus className="h-4 w-4 mr-1.5" /> Schedule Maintenance
             </Button>
           ) : undefined
         }
       />
 
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
+        <Card className="rounded-xl border shadow-sm bg-card">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Total Logged
+            </CardTitle>
+            <Wrench className="h-4 w-4 text-blue-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{maintenance.length}</div>
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-xl border shadow-sm bg-card">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Completed
+            </CardTitle>
+            <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-500">
+              {maintenance.filter((m) => m.status.toLowerCase() === "completed").length}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-xl border shadow-sm bg-card">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              In Progress
+            </CardTitle>
+            <Clock className="h-4 w-4 text-amber-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-amber-500">
+              {maintenance.filter((m) => m.status.toLowerCase() === "in progress" || m.status.toLowerCase() === "pending").length}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-xl border shadow-sm bg-card">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Total Expenses
+            </CardTitle>
+            <DollarSign className="h-4 w-4 text-indigo-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              ${maintenance.reduce((acc, curr) => acc + getCost(curr), 0).toLocaleString()}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Filters bar */}
       <Card className="p-4 mb-4 rounded-xl border shadow-sm bg-card">
         <div className="flex flex-col md:flex-row items-center gap-3">
           <div className="relative w-full md:flex-1">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search records by technician, issue description, or asset name..."
-              className="bg-background h-9 text-sm"
+              className="pl-8 h-9 text-sm bg-background"
             />
           </div>
 
@@ -281,10 +363,106 @@ export function MaintenanceTable({
             data={filteredRecords}
             columns={columns}
             searchPlaceholder="Filter diagnostic logs..."
+            onRowClick={setSelectedRecord}
             pageSize={15}
           />
         </Card>
       )}
+
+      {/* Maintenance Workflow Timeline Drawer */}
+      <Sheet open={!!selectedRecord} onOpenChange={(o) => !o && setSelectedRecord(null)}>
+        <SheetContent className="w-full sm:max-w-md overflow-y-auto p-6 bg-background border-l">
+          {selectedRecord && (
+            <>
+              <SheetHeader className="p-0 border-b pb-4 gap-1 mb-5">
+                <div className="text-xs font-mono text-muted-foreground">Log ID: {selectedRecord.maintenanceId}</div>
+                <SheetTitle className="text-lg font-bold">Maintenance Job Detail</SheetTitle>
+                <div className="mt-2">
+                  <StatusBadge status={selectedRecord.status} />
+                </div>
+              </SheetHeader>
+
+              <div className="space-y-5">
+                {/* Properties list */}
+                <Card className="p-4 rounded-xl border">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">Diagnostic details</h4>
+                  <div className="grid grid-cols-2 gap-y-2.5 text-xs">
+                    <span className="text-muted-foreground">Asset ID</span>
+                    <span className="font-semibold text-foreground font-mono">{selectedRecord.assetId}</span>
+
+                    <span className="text-muted-foreground">Asset Name</span>
+                    <span className="font-medium text-foreground">
+                      {assets.find((a) => a.id === selectedRecord.assetId)?.name || selectedRecord.assetId}
+                    </span>
+
+                    <span className="text-muted-foreground">Issue Description</span>
+                    <span className="font-medium text-foreground">{selectedRecord.issue}</span>
+
+                    <span className="text-muted-foreground">Assigned Tech</span>
+                    <span className="font-semibold text-foreground">{selectedRecord.technician || "Unassigned"}</span>
+
+                    <span className="text-muted-foreground">Estimated Cost</span>
+                    <span className="font-bold text-emerald-600 dark:text-emerald-500">
+                      ${getCost(selectedRecord).toFixed(2)}
+                    </span>
+
+                    <span className="text-muted-foreground">Reported By</span>
+                    <span className="font-medium text-foreground">{selectedRecord.reportedBy}</span>
+
+                    <span className="text-muted-foreground">Completion Date</span>
+                    <span className="font-semibold text-foreground">{getCompletionDate(selectedRecord)}</span>
+                  </div>
+                </Card>
+
+                {/* Workflow Timeline */}
+                <div className="space-y-3">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                    <Clock className="h-4 w-4 text-primary" /> Service Timeline
+                  </h4>
+                  <div className="relative pl-6 border-l-2 border-muted space-y-5 ml-3.5">
+                    {/* Step 1: Created */}
+                    <div className="relative">
+                      <div className="absolute -left-[31px] top-0 h-4 w-4 rounded-full bg-emerald-500 border-4 border-background" />
+                      <div className="space-y-0.5">
+                        <span className="text-xs font-bold text-foreground block">Request Initiated</span>
+                        <span className="text-[10px] text-muted-foreground block">
+                          Logged by {selectedRecord.reportedBy} on {selectedRecord.createdAt}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Step 2: Under Diagnosis */}
+                    <div className="relative">
+                      <div className="absolute -left-[31px] top-0 h-4 w-4 rounded-full bg-amber-500 border-4 border-background" />
+                      <div className="space-y-0.5">
+                        <span className="text-xs font-bold text-foreground block">Under Investigation</span>
+                        <span className="text-[10px] text-muted-foreground block">
+                          Assigned to technician {selectedRecord.technician || "Support Engineer"}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Step 3: Finished */}
+                    <div className="relative">
+                      <div className={`absolute -left-[31px] top-0 h-4 w-4 rounded-full border-4 border-background ${
+                        selectedRecord.status.toLowerCase() === "completed" ? "bg-emerald-500" : "bg-muted"
+                      }`} />
+                      <div className="space-y-0.5">
+                        <span className="text-xs font-bold text-foreground block">Repair Resolved</span>
+                        <span className="text-[10px] text-muted-foreground block">
+                          {selectedRecord.status.toLowerCase() === "completed"
+                            ? `Completed on ${getCompletionDate(selectedRecord)}`
+                            : "Waiting for diagnostic result"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
 
       {/* Schedule Maintenance Dialog */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>

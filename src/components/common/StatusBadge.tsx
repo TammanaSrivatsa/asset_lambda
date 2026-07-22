@@ -49,9 +49,12 @@ const MAP: Record<string, string> = {
   "Ready for Allocation": "bg-indigo-500/10 text-indigo-600 border-indigo-500/20 dark:bg-indigo-500/20 dark:text-indigo-400",
   "Ready for Asset Allocation": "bg-indigo-500/10 text-indigo-600 border-indigo-500/20 dark:bg-indigo-500/20 dark:text-indigo-400",
   "Allocated": "bg-green-500/10 text-green-600 border-green-500/20 dark:bg-green-500/20 dark:text-green-400",
+  "Approved": "bg-green-500/10 text-green-600 border-green-500/20 dark:bg-green-500/20 dark:text-green-400",
+  "Rejected": "bg-red-500/10 text-red-600 border-red-500/20 dark:bg-red-500/20 dark:text-red-400",
+  "Out Of Stock": "bg-red-500/10 text-red-600 border-red-500/20 dark:bg-red-500/20 dark:text-red-400",
 };
 
 export function StatusBadge({ status }: { status: string }) {
-  const cls = MAP[status] ?? "bg-muted text-muted-foreground border";
-  return <Badge variant="outline" className={cn("font-medium", cls)}>{status}</Badge>;
+  const cls = MAP[status] ?? MAP[status.replace(/\s+/g, " ").trim()] ?? "bg-muted text-muted-foreground border";
+  return <Badge variant="outline" className={cn("font-medium whitespace-nowrap", cls)}>{status}</Badge>;
 }

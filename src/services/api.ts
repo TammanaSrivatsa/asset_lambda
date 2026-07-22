@@ -62,3 +62,35 @@ export async function apiUpload(
 
   return body;
 }
+export async function getAssetUploadUrl(fileName: string) {
+  return apiFetch("/assets/upload-url", {
+    method: "POST",
+    body: JSON.stringify({
+      fileName,
+    }),
+  });
+}
+
+export async function uploadFileToS3(uploadUrl: string, file: File) {
+  const response = await fetch(uploadUrl, {
+    method: "PUT",
+    headers: {
+      "Content-Type":
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    },
+    body: file,
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to upload file to S3");
+  }
+}
+
+export async function importAssets(objectKey: string) {
+  return apiFetch("/assets/import", {
+    method: "POST",
+    body: JSON.stringify({
+      objectKey,
+    }),
+  });
+}
