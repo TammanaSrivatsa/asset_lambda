@@ -254,3 +254,12 @@ console.log("Update Endpoint:", endpoint);
     console.log("Upload feature not implemented yet.");
     return [];
   }
+  export async function fetchTicketCategories() {
+  return apiFetch("/admin/ticket-categories");
+}
+
+  export async function fetchTicketsByCategory(category: string) {
+    return apiFetch(
+        `/admin/ticket-categories/${encodeURIComponent(category)}/tickets`
+    );
+}

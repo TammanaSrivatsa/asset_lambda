@@ -62,35 +62,62 @@ export async function apiUpload(
 
   return body;
 }
-export async function getAssetUploadUrl(fileName: string) {
-  return apiFetch("/assets/upload-url", {
-    method: "POST",
-    body: JSON.stringify({
-      fileName,
-    }),
-  });
-}
+export async function importAssets(file: File) {
+  const token = getToken();
 
-export async function uploadFileToS3(uploadUrl: string, file: File) {
-  const response = await fetch(uploadUrl, {
-    method: "PUT",
-    headers: {
-      "Content-Type":
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    },
-    body: file,
+  // Read file as ArrayBuffer
+  const arrayBuffer = await file.arrayBuffer();
+
+  // Convert to Base64
+  const bytes = new Uint8Array(arrayBuffer);
+  let binary = "";
+
+  bytes.forEach((b) => {
+    binary += String.fromCharCode(b);
+  });
+
+  const base64 = btoa(binary);
+
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  const response = await fetch(`${BASE_URL}/assets/import`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      file: base64,
+    }),
   });
 
   if (!response.ok) {
-    throw new Error("Failed to upload file to S3");
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.message || "Failed to import assets");
   }
-}
 
-export async function importAssets(objectKey: string) {
-  return apiFetch("/assets/import", {
-    method: "POST",
-    body: JSON.stringify({
-      objectKey,
-    }),
+  return response.json();
+}
+export async function getAssetTemplate() {
+  const token = getToken();
+
+  const headers: Record<string, string> = {};
+
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  const response = await fetch(`${BASE_URL}/assets/template`, {
+    method: "GET",
+    headers,
   });
+
+  if (!response.ok) {
+    throw new Error("Failed to download template");
+  }
+
+  return response.blob();
 }

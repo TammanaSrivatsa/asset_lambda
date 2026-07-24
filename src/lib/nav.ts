@@ -1,8 +1,8 @@
 import type { Role } from "@/types/domain";
 import {
   LayoutDashboard, Package, Ticket as TicketIcon, User, Users,
-  Building2, Tags, Settings as SettingsIcon, FileBarChart,
-  ClipboardList, Wrench, BookOpen, PlusCircle, ScrollText,
+  Building2, Tags, FileBarChart,
+  ClipboardList, Wrench, BookOpen, PlusCircle,
 } from "lucide-react";
 
 export interface NavItem {
@@ -113,13 +113,8 @@ export const NAV: Record<Role, NavGroup[]> = {
       label: "Configuration", items: [
         { to: "/asset-categories", label: "Asset Categories", icon: Tags },
         { to: "/ticket-categories", label: "Ticket Categories", icon: Tags },
-        { to: "/settings", label: "Application Settings", icon: SettingsIcon },
       ]
     },
-    {
-      label: "Insights", items: [
-        { to: "/audit-logs", label: "Audit Logs", icon: ScrollText },
-      ]
-    },
+
   ],
 };

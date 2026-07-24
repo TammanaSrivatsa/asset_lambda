@@ -57,10 +57,10 @@ export default function DepartmentsPage() {
   const filteredAssets = deptData
     ? deptData.assets.filter(
         (a) =>
-          a.name.toLowerCase().includes(assetSearch.toLowerCase()) ||
-          a.category.toLowerCase().includes(assetSearch.toLowerCase()) ||
-          a.serial.toLowerCase().includes(assetSearch.toLowerCase()) ||
-          a.id.toLowerCase().includes(assetSearch.toLowerCase())
+          String(a.name || "").toLowerCase().includes(assetSearch.toLowerCase()) ||
+          String(a.category || "").toLowerCase().includes(assetSearch.toLowerCase()) ||
+          String(a.serial || "").toLowerCase().includes(assetSearch.toLowerCase()) ||
+          String(a.id || "").toLowerCase().includes(assetSearch.toLowerCase())
       )
     : [];
 

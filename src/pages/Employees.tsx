@@ -11,12 +11,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuCheckboxItem } from "@/components/ui/dropdown-menu";
 import type { Employee } from "@/types/domain";
 import { uniqueValues } from "@/lib/live-data";
 import { DEPARTMENTS as MOCK_DEPARTMENTS, LOCATIONS as MOCK_LOCATIONS, CATEGORIES as MOCK_CATEGORIES } from "@/data/mock";
 import { useData } from "@/contexts/data";
-import { Plus, MoreHorizontal, Eye, Edit, Trash2, Mail, Phone, Calendar, Clock, CheckCircle2, AlertCircle, Laptop } from "lucide-react";
+import { Plus, Trash2, Mail, Phone, Calendar, Clock, CheckCircle2, AlertCircle, Laptop, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -37,10 +37,11 @@ export default function EmployeesPage() {
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("employee");
   const [department, setDepartment] = useState("");
-  const [location, setLocation] = useState("");
+  const [designation, setDesignation] = useState("");
+  const [joiningDate, setJoiningDate] = useState("");
   const [allocationDate, setAllocationDate] = useState("");
   const [allocationTime, setAllocationTime] = useState("");
-  const [requiredAssetCategory, setRequiredAssetCategory] = useState("");
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
 
   const handleOpenCreate = () => {
     setFirstName("");
@@ -48,10 +49,11 @@ export default function EmployeesPage() {
     setEmail("");
     setRole("employee");
     setDepartment("");
-    setLocation("");
+    setDesignation("");
+    setJoiningDate("");
     setAllocationDate("");
     setAllocationTime("");
-    setRequiredAssetCategory("");
+    setSelectedCategories([]);
     setCreateOpen(true);
   };
 
@@ -61,8 +63,9 @@ export default function EmployeesPage() {
       lastName.trim() &&
       email.trim() &&
       department &&
-      location &&
-      (role !== "employee" || (allocationDate && allocationTime && requiredAssetCategory));
+      designation.trim() &&
+      joiningDate &&
+      (role !== "employee" || (allocationDate && allocationTime && selectedCategories.length > 0));
 
     if (!isFormValid) {
       toast.error("Please fill in all required fields.");
@@ -75,14 +78,14 @@ export default function EmployeesPage() {
         email: email.trim(),
         role,
         department,
-        location,
-        designation: role === "support" ? "Support Engineer" : role === "asset_manager" ? "Asset Manager" : "Software Engineer",
+        designation: designation.trim(),
+        joiningDate,
         manager: "Aarav Sharma",
         phone: `+1 555-${String(1000 + Math.floor(Math.random() * 9000))}`,
         allocationDate: role === "employee" ? allocationDate : undefined,
         allocationTime: role === "employee" ? allocationTime : undefined,
         allocationStatus: role === "employee" ? "Awaiting Asset Verification" : undefined,
-        requiredAssetCategory: role === "employee" ? requiredAssetCategory : undefined,
+        requiredAssetCategory: role === "employee" ? selectedCategories : undefined,
       });
 
       toast.success(`${role === "employee" ? "Employee" : role === "support" ? "Support Engineer" : "Asset Manager"} added and credentials sent.`);
@@ -112,32 +115,8 @@ export default function EmployeesPage() {
     )},
     { accessorKey: "department", header: "Department" },
     { accessorKey: "designation", header: "Designation" },
-    { accessorKey: "manager", header: "Manager" },
-    { accessorKey: "location", header: "Location" },
     { id: "status", header: "Status", cell: ({row}) => <StatusBadge status={row.original.status}/> },
-    { id: "actions", header: "", cell: ({row}) => (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={e => e.stopPropagation()}><MoreHorizontal className="h-4 w-4"/></Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={() => setSelected(row.original)}><Eye className="h-4 w-4 mr-2"/>View</DropdownMenuItem>
-          <DropdownMenuItem onClick={() => toast.info("Edit not wired in demo")}><Edit className="h-4 w-4 mr-2"/>Edit</DropdownMenuItem>
-          <DropdownMenuItem className="text-destructive" onClick={() => setConfirmDelete(row.original)}><Trash2 className="h-4 w-4 mr-2"/>Delete</DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    )},
   ];
-
-  const isFormValid =
-    firstName.trim() &&
-    lastName.trim() &&
-    email.trim() &&
-    department &&
-    location &&
-    allocationDate &&
-    allocationTime &&
-    requiredAssetCategory;
 
   const renderTimeline = (employee: Employee) => {
     const steps = [
@@ -284,7 +263,11 @@ export default function EmployeesPage() {
                     <span className="text-muted-foreground">Scheduled Date:</span>
                     <span className="font-medium text-foreground">{selected.allocationDate} @ {selected.allocationTime}</span>
                     <span className="text-muted-foreground">Required Category:</span>
-                    <span className="font-semibold text-primary">{selected.requiredAssetCategory || "Laptop"}</span>
+                    <span className="font-semibold text-primary">
+                      {Array.isArray(selected.requiredAssetCategory)
+                        ? selected.requiredAssetCategory.join(", ")
+                        : selected.requiredAssetCategory || "Laptop"}
+                    </span>
                     <span className="text-muted-foreground">Current Workflow State:</span>
                     <span><StatusBadge status={selected.allocationStatus ?? "Awaiting Asset Verification"}/></span>
                   </div>
@@ -292,6 +275,13 @@ export default function EmployeesPage() {
                   {renderTimeline(selected)}
                 </Card>
               )}
+
+              <div className="pt-4 border-t flex justify-end gap-3 mt-2">
+                <Button variant="outline" className="flex-1" onClick={() => setSelected(null)}>Close</Button>
+                <Button variant="destructive" className="flex-1 gap-2" onClick={() => setConfirmDelete(selected)}>
+                  <Trash2 className="h-4 w-4" /> Delete Employee
+                </Button>
+              </div>
             </>
           )}
         </SheetContent>
@@ -338,12 +328,14 @@ export default function EmployeesPage() {
                 </Select>
               </div>
               <div>
-                <Label className="text-xs font-semibold">Location <span className="text-destructive">*</span></Label>
-                <Select value={location} onValueChange={setLocation}>
-                  <SelectTrigger className="mt-1.5"><SelectValue placeholder="Select"/></SelectTrigger>
-                  <SelectContent>{LOCATIONS.map(l=><SelectItem key={l} value={l}>{l}</SelectItem>)}</SelectContent>
-                </Select>
+                <Label className="text-xs font-semibold">Designation <span className="text-destructive">*</span></Label>
+                <Input className="mt-1.5" value={designation} onChange={e => setDesignation(e.target.value)} placeholder="e.g. Software Engineer"/>
               </div>
+            </div>
+
+            <div>
+              <Label className="text-xs font-semibold">Joining Date <span className="text-destructive">*</span></Label>
+              <Input className="mt-1.5 cursor-pointer" type="date" value={joiningDate} onChange={e => setJoiningDate(e.target.value)}/>
             </div>
 
             {role === "employee" && (
@@ -352,12 +344,46 @@ export default function EmployeesPage() {
 
                 <div>
                   <Label className="text-xs font-semibold flex items-center gap-1">
-                    <Laptop className="h-3 w-3 text-muted-foreground" /> Required Hardware Category <span className="text-destructive">*</span>
+                    <Laptop className="h-3 w-3 text-muted-foreground" /> Required Hardware Categories <span className="text-destructive">*</span>
                   </Label>
-                  <Select value={requiredAssetCategory} onValueChange={setRequiredAssetCategory}>
-                    <SelectTrigger className="mt-1.5"><SelectValue placeholder="Select Required Category"/></SelectTrigger>
-                    <SelectContent>{CATEGORIES.map(c=><SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
-                  </Select>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        className="w-full mt-1.5 justify-between h-9 text-xs font-normal border bg-background hover:bg-background/80 text-foreground"
+                      >
+                        <span className="truncate">
+                          {selectedCategories.length === 0
+                            ? "Select Required Categories"
+                            : selectedCategories.join(", ")}
+                        </span>
+                        <ChevronDown className="h-4 w-4 opacity-50 shrink-0" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="w-[var(--radix-dropdown-menu-trigger-width)] font-normal text-xs bg-background border border-border" align="start">
+                      {CATEGORIES.map((cat) => {
+                        const isChecked = selectedCategories.includes(cat);
+                        return (
+                          <DropdownMenuCheckboxItem
+                            key={cat}
+                            checked={isChecked}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setSelectedCategories([...selectedCategories, cat]);
+                              } else {
+                                setSelectedCategories(selectedCategories.filter((c) => c !== cat));
+                              }
+                            }}
+                            onSelect={(e) => e.preventDefault()}
+                            className="text-xs cursor-pointer"
+                          >
+                            {cat}
+                          </DropdownMenuCheckboxItem>
+                        );
+                      })}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
@@ -385,8 +411,9 @@ export default function EmployeesPage() {
                 lastName.trim() &&
                 email.trim() &&
                 department &&
-                location &&
-                (role !== "employee" || (allocationDate && allocationTime && requiredAssetCategory))
+                designation.trim() &&
+                joiningDate &&
+                (role !== "employee" || (allocationDate && allocationTime && selectedCategories.length > 0))
               )
             }>Create</Button>
           </DialogFooter>

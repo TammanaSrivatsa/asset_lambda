@@ -112,8 +112,8 @@ export default function AssignmentsPage() {
           asg.assetId.toLowerCase().includes(q) ||
           (emp && emp.name.toLowerCase().includes(q)) ||
           (emp && emp.department.toLowerCase().includes(q)) ||
-          (asset && asset.name.toLowerCase().includes(q)) ||
-          (asset && asset.serial.toLowerCase().includes(q))
+          (asset && String(asset.name || "").toLowerCase().includes(q)) ||
+          (asset && String(asset.serial || "").toLowerCase().includes(q))
         );
       });
     }

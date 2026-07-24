@@ -24,9 +24,7 @@ import AllTickets from "./pages/AllTickets";
 import AssignedTickets from "./pages/AssignedTickets";
 import RaiseTicket from "./pages/RaiseTicket";
 import TicketCategories from "./pages/TicketCategories";
-import AuditLogs from "./pages/AuditLogs";
 import Profile from "./pages/Profile";
-import Settings from "./pages/Settings";
 import Notifications from "./pages/Notifications";
 import Search from "./pages/Search";
 import Reports from "./pages/Reports";
@@ -113,9 +111,7 @@ export function App() {
             <Route path="/assigned-tickets" element={<AssignedTickets />} />
             <Route path="/raise-ticket" element={<RaiseTicket />} />
             <Route path="/ticket-categories" element={<TicketCategories />} />
-            <Route path="/audit-logs" element={<AuditLogs />} />
             <Route path="/profile" element={<Profile />} />
-            <Route path="/settings" element={<Settings />} />
             <Route path="/notifications" element={<Notifications />} />
             <Route path="/search" element={<Search />} />
             <Route path="/reports" element={<Reports />} />

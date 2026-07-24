@@ -30,10 +30,8 @@ export default function AllocationOnboardingPage() {
 
   // Modal Control
   const [assigningEmployee, setAssigningEmployee] = useState<Employee | null>(null);
-  const [selectedAssetId, setSelectedAssetId] = useState<string>("");
-  const [assetSearch, setAssetSearch] = useState("");
   const [remarks, setRemarks] = useState("");
-  const [filterByLocation, setFilterByLocation] = useState(true);
+  
 
   useEffect(() => {
     refreshData();
@@ -72,7 +70,9 @@ export default function AllocationOnboardingPage() {
 
   // Filtered Onboarding Employees
   const onboardingEmployees = useMemo(() => {
-    return employees.filter((emp) => emp.allocationStatus);
+    return employees.filter(
+      (emp) => emp.workflowState === "Pending Asset Allocation"
+    );
   }, [employees]);
 
   const filteredEmployees = useMemo(() => {
@@ -81,7 +81,7 @@ export default function AllocationOnboardingPage() {
     // 1. Tab Status Filter
     if (tab !== "all") {
       list = list.filter((emp) => {
-        const status = emp.allocationStatus;
+        const status = emp.workflowState;
         if (tab === "pending_support") return status === "Ready for Allocation" || status === "Ready for Asset Allocation";
         if (tab === "verified") return status === "Ready for Allocation" || status === "Ready for Asset Allocation";
         if (tab === "pending_review") return status === "Awaiting Asset Verification" || status === "Pending Asset Manager Review";
@@ -99,57 +99,31 @@ export default function AllocationOnboardingPage() {
           emp.id.toLowerCase().includes(q) ||
           emp.name.toLowerCase().includes(q) ||
           emp.department.toLowerCase().includes(q) ||
-          (emp.requiredAssetCategory && emp.requiredAssetCategory.toLowerCase().includes(q))
+          ((Array.isArray(emp.requiredAssetCategory) ? emp.requiredAssetCategory.join(", ") : emp.requiredAssetCategory || "").toLowerCase().includes(q))
       );
     }
 
     return list;
   }, [onboardingEmployees, tab, searchQuery]);
 
-  const availableAssets = useMemo(() => {
-    if (!assigningEmployee) return [];
-    return assets.filter((asset) => {
-      if (asset.status !== "Available") return false;
-      if (asset.category !== (assigningEmployee.requiredAssetCategory || "Laptop")) return false;
-      if (filterByLocation && asset.location !== assigningEmployee.location) return false;
-      if (assetSearch.trim()) {
-        const s = assetSearch.toLowerCase();
-        return (
-          asset.name.toLowerCase().includes(s) ||
-          asset.id.toLowerCase().includes(s) ||
-          asset.category.toLowerCase().includes(s) ||
-          asset.model.toLowerCase().includes(s) ||
-          asset.serial.toLowerCase().includes(s)
-        );
-      }
-      return true;
-    });
-  }, [assets, assigningEmployee, assetSearch, filterByLocation]);
-
   const handleOpenAssignDialog = (emp: Employee) => {
     setAssigningEmployee(emp);
-    setSelectedAssetId("");
-    setAssetSearch("");
     setRemarks("");
-    setFilterByLocation(true);
   };
 
   const handleConfirmAssignment = async () => {
-    if (!assigningEmployee || !selectedAssetId) return;
-    const asset = assets.find((a) => a.id === selectedAssetId);
-    if (!asset) return;
-
+    if (!assigningEmployee) return;
     try {
       await completeOnboardingAllocation(
         assigningEmployee.id,
-        selectedAssetId,
-        remarks || "Workspace hardware configured.",
-        "Support Engineer User"
+        remarks || "Assets allocated successfully."
       );
-      toast.success(`Asset "${asset.name}" allocated to ${assigningEmployee.name}. Onboarding completed.`);
+      toast.success(
+        `${assigningEmployee.name}'s reserved assets have been allocated successfully.`
+      );
       setAssigningEmployee(null);
     } catch (err: any) {
-      toast.error(err.message || "Failed to allocate asset");
+      toast.error(err.message || "Failed to allocate assets");
     }
   };
 
@@ -174,7 +148,9 @@ export default function AllocationOnboardingPage() {
         header: "Required Hardware",
         cell: ({ row }) => (
           <span className="font-semibold text-primary">
-            {row.original.requiredAssetCategory || "Laptop"}
+            {Array.isArray(row.original.requiredAssetCategory)
+              ? row.original.requiredAssetCategory.join(", ")
+              : row.original.requiredAssetCategory || "Laptop"}
           </span>
         ),
       },
@@ -232,8 +208,7 @@ export default function AllocationOnboardingPage() {
         cell: ({ row }) => {
           const status = row.original.allocationStatus;
           const isReady =
-            status === "Ready for Allocation" || status === "Ready for Asset Allocation";
-
+            row.original.workflowState === "Pending Asset Allocation";
           if (isReady) {
             return (
               <Button size="sm" onClick={() => handleOpenAssignDialog(row.original)}>
@@ -342,7 +317,9 @@ export default function AllocationOnboardingPage() {
                 <div>
                   <span className="text-xs text-muted-foreground block">Required hardware category</span>
                   <span className="font-bold mt-0.5 block text-primary">
-                    {assigningEmployee.requiredAssetCategory || "Laptop"}
+                    {Array.isArray(assigningEmployee.requiredAssetCategory)
+                      ? assigningEmployee.requiredAssetCategory.join(", ")
+                      : assigningEmployee.requiredAssetCategory || "Laptop"}
                   </span>
                 </div>
                 <div>
@@ -386,7 +363,7 @@ export default function AllocationOnboardingPage() {
                 <div className="border rounded-md max-h-[220px] overflow-y-auto divide-y bg-background scrollbar-thin">
                   {availableAssets.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground text-xs">
-                      No available {assigningEmployee.requiredAssetCategory || "Laptop"}s found in{" "}
+                      No available {Array.isArray(assigningEmployee.requiredAssetCategory) ? assigningEmployee.requiredAssetCategory.join(", ") : assigningEmployee.requiredAssetCategory || "Laptop"}s found in{" "}
                       {filterByLocation ? assigningEmployee.location : "any location"}.
                       {filterByLocation && (
                         <button

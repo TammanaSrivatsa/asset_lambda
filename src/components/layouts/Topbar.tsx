@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Bell, Search, Moon, Sun, Settings, LogOut, MessageSquare, User as UserIcon, Boxes } from "lucide-react";
+import { Bell, Search, Moon, Sun, LogOut, MessageSquare, User as UserIcon, Boxes } from "lucide-react";
 import { useAuth } from "@/contexts/auth";
 import { useTheme } from "@/contexts/theme";
 import { Button } from "@/components/ui/button";
@@ -105,7 +105,6 @@ export function Topbar() {
             <DropdownMenuLabel>{user?.email}</DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild><Link to="/profile"><UserIcon className="h-4 w-4 mr-2" />Profile</Link></DropdownMenuItem>
-            <DropdownMenuItem asChild><Link to="/settings"><Settings className="h-4 w-4 mr-2" />Settings</Link></DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => { logout(); navigate("/login"); }} className="text-destructive">
               <LogOut className="h-4 w-4 mr-2" />Logout

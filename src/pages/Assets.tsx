@@ -17,7 +17,6 @@ import {
   Clock,
   Wrench,
   AlertTriangle,
-  Search,
   Calendar,
   DollarSign,
   User,
@@ -42,7 +41,7 @@ import { Progress } from "@/components/ui/progress";
 import type { Asset } from "@/types/domain";
 import { useData } from "@/contexts/data";
 import { toast } from "sonner";
-import { getAssetUploadUrl, uploadFileToS3, importAssets } from "@/services/api";
+import {importAssets, getAssetTemplate } from "@/services/api";
 
 // Zod Validation Schema for Adding Asset
 const assetFormSchema = z.object({
@@ -68,7 +67,6 @@ export default function AssetsPage() {
   const [importOpen, setImportOpen] = useState(false);
   const [category, setCategory] = useState("all");
   const [status, setStatus] = useState("all");
-  const [searchQuery, setSearchQuery] = useState("");
 
   // Import states
   const [importProgress, setImportProgress] = useState(0);
@@ -155,9 +153,7 @@ export default function AssetsPage() {
 
     try {
       const file = files[0];
-      const upload = await getAssetUploadUrl(file.name);
-      await uploadFileToS3(upload.uploadUrl, file);
-      const result = await importAssets(upload.objectKey);
+      const result = await importAssets(file);
       setImportedCount(result.imported);
       toast.success(`${result.imported} assets imported successfully`);
       refreshData();
@@ -169,6 +165,25 @@ export default function AssetsPage() {
       setImporting(false);
     }
   };
+  const downloadTemplate = async () => {
+    try {
+      const blob = await getAssetTemplate();
+
+      const url = window.URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "Asset_Template.xlsx";
+
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      window.URL.revokeObjectURL(url);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to download template");
+    }
+  };
 
   const filtered = useMemo(() => {
     return assets.filter((a) => {
@@ -178,20 +193,9 @@ export default function AssetsPage() {
       // Status filter
       const matchesStatus = status === "all" || a.status === status;
 
-      // Search input (Asset ID, Asset Name, Serial Number, Category, Manufacturer, Assigned Employee)
-      const matchesSearch =
-        searchQuery.trim() === "" ||
-        a.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        a.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        a.serial.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        a.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        a.manufacturer.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (a.assignedTo &&
-          employees.find((e) => e.id === a.assignedTo)?.name.toLowerCase().includes(searchQuery.toLowerCase()));
-
-      return matchesCategory && matchesStatus && matchesSearch;
+      return matchesCategory && matchesStatus;
     });
-  }, [assets, category, status, searchQuery, employees]);
+  }, [assets, category, status]);
 
   const columns: ColumnDef<Asset>[] = useMemo(
     () => [
@@ -290,19 +294,39 @@ export default function AssetsPage() {
         description={`Manage all ${assets.length.toLocaleString()} enterprise assets across locations.`}
         actions={
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => toast.success("Export queued (demo)")}>
-              <Download className="h-4 w-4 mr-1.5" /> Export
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={downloadTemplate}
+            >
+              <Download className="h-4 w-4 mr-1.5" />
+              Download Template
             </Button>
-            <Button variant="outline" size="sm" onClick={() => { setImportProgress(0); setImportedCount(null); setUploadError(null); setImportOpen(true); }}>
-              <Upload className="h-4 w-4 mr-1.5" /> Import
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setImportProgress(0);
+                setImportedCount(null);
+                setUploadError(null);
+                setImportOpen(true);
+              }}
+            >
+              <Upload className="h-4 w-4 mr-1.5" />
+              Import
             </Button>
-            <Button size="sm" onClick={handleOpenCreate}>
-              <Plus className="h-4 w-4 mr-1.5" /> Add Asset
+
+            <Button
+              size="sm"
+              onClick={handleOpenCreate}
+            >
+              <Plus className="h-4 w-4 mr-1.5" />
+              Add Asset
             </Button>
           </div>
         }
       />
-
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
         <Card className="rounded-xl border shadow-sm bg-card">
@@ -368,42 +392,30 @@ export default function AssetsPage() {
 
       {/* Filter and Search controls */}
       <Card className="p-4 mb-4 rounded-xl border shadow-sm bg-card">
-        <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-          <div className="relative w-full md:max-w-md">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search assets by ID, name, serial, category, custodian..."
-              className="pl-8 h-9 text-sm bg-background"
-            />
-          </div>
+        <div className="flex flex-wrap gap-3 items-center">
+          <Select value={category} onValueChange={setCategory}>
+            <SelectTrigger className="h-9 w-36 bg-background text-xs">
+              <SelectValue placeholder="Category" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Categories</SelectItem>
+              {CATEGORIES.map((c) => (
+                <SelectItem key={c} value={c}>
+                  {c}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-          <div className="flex flex-wrap gap-2 items-center w-full md:w-auto">
-            <Select value={category} onValueChange={setCategory}>
-              <SelectTrigger className="h-9 w-36 bg-background text-xs">
-                <SelectValue placeholder="Category" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Categories</SelectItem>
-                {CATEGORIES.map((c) => (
-                  <SelectItem key={c} value={c}>
-                    {c}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Tabs value={status} onValueChange={setStatus} className="w-full sm:w-auto">
-              <TabsList className="h-9 rounded-lg p-0.5 bg-muted/60">
-                <TabsTrigger value="all" className="text-xs px-2.5 py-1">All</TabsTrigger>
-                <TabsTrigger value="Available" className="text-xs px-2.5 py-1">Available</TabsTrigger>
-                <TabsTrigger value="Assigned" className="text-xs px-2.5 py-1">Assigned</TabsTrigger>
-                <TabsTrigger value="Maintenance" className="text-xs px-2.5 py-1">Maintenance</TabsTrigger>
-                <TabsTrigger value="Retired" className="text-xs px-2.5 py-1">Retired</TabsTrigger>
-              </TabsList>
-            </Tabs>
-          </div>
+          <Tabs value={status} onValueChange={setStatus} className="w-full sm:w-auto">
+            <TabsList className="h-9 rounded-lg p-0.5 bg-muted/60">
+              <TabsTrigger value="all" className="text-xs px-2.5 py-1">All</TabsTrigger>
+              <TabsTrigger value="Available" className="text-xs px-2.5 py-1">Available</TabsTrigger>
+              <TabsTrigger value="Assigned" className="text-xs px-2.5 py-1">Assigned</TabsTrigger>
+              <TabsTrigger value="Maintenance" className="text-xs px-2.5 py-1">Maintenance</TabsTrigger>
+              <TabsTrigger value="Retired" className="text-xs px-2.5 py-1">Retired</TabsTrigger>
+            </TabsList>
+          </Tabs>
         </div>
       </Card>
 
@@ -423,7 +435,7 @@ export default function AssetsPage() {
             columns={columns}
             searchPlaceholder="Filter assets table..."
             pageSize={15}
-          />
+            />
         </Card>
       )}
 

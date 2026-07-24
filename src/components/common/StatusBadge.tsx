@@ -52,6 +52,10 @@ const MAP: Record<string, string> = {
   "Approved": "bg-green-500/10 text-green-600 border-green-500/20 dark:bg-green-500/20 dark:text-green-400",
   "Rejected": "bg-red-500/10 text-red-600 border-red-500/20 dark:bg-red-500/20 dark:text-red-400",
   "Out Of Stock": "bg-red-500/10 text-red-600 border-red-500/20 dark:bg-red-500/20 dark:text-red-400",
+  
+  // Custom workflow states
+  "Pending AM Review": "bg-yellow-500/10 text-yellow-600 border-yellow-500/20 dark:bg-yellow-500/20 dark:text-yellow-400",
+  "Allocation In Progress": "bg-orange-500/10 text-orange-600 border-orange-500/20 dark:bg-orange-500/20 dark:text-orange-400",
 };
 
 export function StatusBadge({ status }: { status: string }) {

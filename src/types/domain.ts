@@ -10,36 +10,61 @@ export interface Employee {
   uuid: string;
   name: string;
   email: string;
+
   role?: Role;
+
   department: string;
   designation: string;
   manager: string;
   location: string;
+
   status: "Active" | "Inactive" | "On Leave";
+
   avatar: string;
   phone: string;
+
   joinDate: string;
+
   allocationDate?: string;
   allocationTime?: string;
+
+  workflowState?:
+    | "Pending Asset Manager"
+    | "Pending IT Support"
+    | "Pending Asset Allocation"
+    | "Completed";
+
   allocationStatus?:
     | "Awaiting Asset Verification"
-    | "Waiting for Inventory"
-    | "Ready for Allocation"
-    | "Completed";
-  requiredAssetCategory?: string;
+    | "Assets Reserved"
+    | "Verified by IT Support"
+    | "Assets Allocated"
+    | "Partial Reservation";
+
+  requiredAssetCategory?: string[];
+
+  reservedAssetDetails?: {
+    assetId: string;
+    assetName: string;
+    category: string;
+  }[];
+
   allocatedAssetDetails?: {
     assetId: string;
     assetName: string;
-    serialNumber: string;
-    assignedAt: string;
-    assignedBy: string;
-    remarks?: string;
-  };
+    category: string;
+  }[];
+
+  pendingAssets?: string[];
+
   allocationHistory?: {
-    step: string;
-    timestamp: string;
-    actor: string;
+    allocatedAt: string;
     remarks?: string;
+    assets: {
+      assetId: string;
+      assetName: string;
+      category: string;
+    }[];
   }[];
 }
 

@@ -17,6 +17,7 @@ import {
   fetchAssets,
   createAsset,
   deleteAsset,
+  reserveAssets,
   fetchAssignments,
   createAssignment,
   fetchMaintenance,
@@ -43,7 +44,7 @@ interface DataCtx {
   uploadFiles: (files: FileList) => Promise<string[]>;
   updateTicketStatus: (ticketId: string, status: Ticket["status"], actor: string, role: Role, comment?: string) => Promise<void>;
   addTicketComment: (ticketId: string, actor: string, role: Role, message: string) => Promise<void>;
-  addEmployee: (emp: Omit<Employee, "id" | "avatar" | "joinDate" | "status">) => Promise<Employee>;
+  addEmployee: (emp: any) => Promise<Employee>;
   deleteEmployee: (id: string) => Promise<void>;
   assignAssets: (employeeId: string, assetIds: string[]) => Promise<void>;
   addAsset: (asset: Omit<Asset, "id">) => Promise<Asset>;
@@ -265,10 +266,9 @@ setTickets(ticketResponse.tickets);
         department: empData.department,
         designation: empData.designation,
         manager: empData.manager,
-        location: empData.location,
         status: "Active",
         phone: empData.phone,
-        joinDate: todayStr(),
+        joinDate: empData.joiningDate,
         allocationDate: empData.allocationDate,
         allocationTime: empData.allocationTime,
         requiredAssetCategory: empData.requiredAssetCategory,
@@ -349,17 +349,16 @@ const deleteEmployee = async (id: string) => {
             return;
         }
 
-        await verifyEmployee(employeeId, remarks);
+        await reserveAssets(employeeId, remarks);
 
         await refreshData();
 
-        toast.success("Employee verified successfully.");
+        toast.success("Assets reserved successfully.");
 
     } catch (err: any) {
-        toast.error(err.message || "Failed to verify employee");
+        toast.error(err.message || "Failed to reserve assets");
     }
 };
-
   const completeOnboardingAllocation = async (
     employeeId: string,
     assetId: string,
@@ -370,7 +369,6 @@ const deleteEmployee = async (id: string) => {
 
         await completeAllocation(
             employeeId,
-            assetId,
             remarks
         );
 

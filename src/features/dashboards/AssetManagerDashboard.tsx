@@ -55,11 +55,11 @@ export function AssetManagerDashboard() {
           ? employees.find((e) => e.id === a.assignedTo)?.name || a.assignedTo
           : "";
         return (
-          a.id.toLowerCase().includes(q) ||
-          a.name.toLowerCase().includes(q) ||
-          a.serial.toLowerCase().includes(q) ||
-          a.category.toLowerCase().includes(q) ||
-          a.manufacturer.toLowerCase().includes(q) ||
+          String(a.id || "").toLowerCase().includes(q) ||
+          String(a.name || "").toLowerCase().includes(q) ||
+          String(a.serial || "").toLowerCase().includes(q) ||
+          String(a.category || "").toLowerCase().includes(q) ||
+          String(a.manufacturer || "").toLowerCase().includes(q) ||
           empName.toLowerCase().includes(q)
         );
       });

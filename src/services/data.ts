@@ -73,8 +73,13 @@ export function mapEmployee(user: any): Employee {
 
     allocationDate: user.allocationDate,
     allocationTime: user.allocationTime,
+    workflowState: user.workflowState,
     allocationStatus: user.allocationStatus,
-    requiredAssetCategory: user.requiredAssetCategory,
+    requiredAssetCategory: user.requiredAssetCategory ?? [],
+    reservedAssetDetails: user.reservedAssetDetails ?? [],
+    allocatedAssetDetails: user.allocatedAssetDetails ?? [],
+    pendingAssets: user.pendingAssets ?? [],
+    allocationHistory: user.allocationHistory ?? [],
   };
 }
 
@@ -111,7 +116,15 @@ export async function createEmployee(payload: any) {
           ? "IT_SUPPORT"
           : payload.role === "asset_manager"
           ? "ASSET_MANAGER"
-          : "EMPLOYEE"
+          : "EMPLOYEE",
+      department: payload.department,
+      designation: payload.designation,
+      joiningDate: payload.joinDate,
+      joinDate: payload.joinDate,
+      join_date: payload.joinDate,
+      allocationDate: payload.allocationDate,
+      allocationTime: payload.allocationTime,
+      requiredAssetCategory: payload.requiredAssetCategory
     })
   });
 
@@ -192,14 +205,12 @@ export async function createAssignment(payload: any) {
 }
 export async function completeAllocation(
   employeeId: string,
-  assetId: string,
   remarks: string
 ) {
   return apiFetch("/support/onboarding/allocate", {
     method: "POST",
     body: JSON.stringify({
       employeeId,
-      assetIds: [assetId],
       remarks,
     }),
   });
@@ -255,5 +266,18 @@ export async function updateMaintenance(id: string, payload: any) {
 export async function deleteMaintenance(id: string) {
   return apiFetch(`/maintenance/${id}`, {
     method: "DELETE"
+  });
+}
+
+export async function reserveAssets(
+  employeeId: string,
+  remarks: string
+) {
+  return apiFetch("/assets/reserve", {
+    method: "POST",
+    body: JSON.stringify({
+      employeeId,
+      remarks,
+    }),
   });
 }
